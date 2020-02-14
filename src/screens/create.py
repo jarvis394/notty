@@ -70,7 +70,7 @@ def execute():
         return
 
     # Write DB entry
-    db.insert((1, title, text, DATE_NOW))
+    db.insert((title, text, DATE_NOW))
     
     print(HTML(f'<style color="blue">Successfully wrote your note to the storage with an ID </style>'))
 
