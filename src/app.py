@@ -17,6 +17,11 @@ def create():
     clear()
     return screens.create.execute()
 
+@cli.command(aliases=['list', 'l'])
+def list():
+    clear()
+    return screens.list.execute()
+
 # Initialize color support
 colorama.init()
 

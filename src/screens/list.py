@@ -5,7 +5,11 @@ from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout.containers import HSplit, VSplit, Window, WindowAlign
 from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
+from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.layout.layout import Layout
+from colorama import Fore, Style
+
+RS = Style.RESET_ALL
 
 left_buffer = Buffer()
 right_buffer = Buffer()
@@ -24,8 +28,8 @@ body = VSplit(
 
 def get_titlebar_text():
     return [
-        ("class:title", " Hello world "),
-        ("class:title", " (Press [Ctrl-Q] to quit.)"),
+        ("class:title", "Notes"),
+        ("class:title", HTML('<style color="gray">(Press [Ctrl-C] to quit)</style>')),
     ]
 
 
@@ -61,7 +65,5 @@ application = Application(
     full_screen=True,
 )
 
-def run():
+def execute():
     application.run()
-run()
-
