@@ -7,7 +7,7 @@ class Notes:
 
         # Init the DB tables
         self.db.execute('''CREATE TABLE IF NOT EXISTS notes
-                   (id integer AUTO_INCREMENT NOT_NULL primary key, title text NOT_NULL, text text NOT_NULL, ts text NOT_NULL);
+                   (id integer NOT_NULL AUTO_INCREMENT, title text NOT_NULL, text text NOT_NULL, ts text NOT_NULL, PRIMARY KEY (id));
                    ''')
 
     def get_all(self):
@@ -25,7 +25,7 @@ class Notes:
         return { 'id': data[0], 'title': data[1], 'text': data[2], 'ts': data[3] }
 
     def insert(self, data):
-        self.db.execute(f'INSERT INTO notes VALUES (?, ?, ?, ?);', data)
+        self.db.execute(f'INSERT INTO notes (id, title, text, ts) VALUES (?, ?, ?, ?);', data)
         self.connection.commit()
         return self
 
