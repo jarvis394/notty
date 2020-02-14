@@ -17,7 +17,7 @@ def execute():
 
     # Bottom toolbar HTML text
     bottom_toolbar = HTML(
-        'Press <style bg="blue"><b>Esc-Enter</b></style> to save a note and <style bg="blue"><b>Ctrl-C</b></style> to exit.')
+        'Press <style bg="cyan"><b>Esc-Enter</b></style> to save a note and <style bg="cyan"><b>Ctrl-C</b></style> to exit.')
 
     # Key bindings for letting a user to exit
     kb = KeyBindings()
@@ -39,15 +39,14 @@ def execute():
 
     def prompt_title():
         return prompt(
-            HTML('Set a <b><style color="blue">title</style></b> to the note <style color="gray">(default is current date)</style>: '),
-            bottom_toolbar=bottom_toolbar,
+            HTML('Set a <b><style color="cyan">title</style></b> to the note <style color="gray">(default is current date)</style>: '),
             key_bindings=kb
         )
 
     def prompt_text():
         return prompt(
             HTML(
-                'Write some <b><style color="blue">text</style></b> to the note: \n\n<style color="gray">   1 │ </style>'),
+                'Write some <b><style color="cyan">text</style></b> to the note: \n\n<style color="gray">   1 │ </style>'),
             bottom_toolbar=bottom_toolbar,
             multiline=True,
             prompt_continuation=prompt_continuation,
@@ -70,8 +69,9 @@ def execute():
         return
 
     # Write DB entry
-    db.insert((title, text, DATE_NOW))
-    
-    print(HTML(f'<style color="blue">Successfully wrote your note to the storage with an ID </style>'))
+    result = db.insert((title, text, DATE_NOW))
+    id = db.db.lastrowid
+
+    print(f'\n\nSuccessfully wrote {Fore.CYAN}your note{RS} to the storage with an ID {Fore.YELLOW}{id}{RS}')
 
     return [title, text, DATE_NOW]
