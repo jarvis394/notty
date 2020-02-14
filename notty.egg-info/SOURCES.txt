@@ -1,0 +1,17 @@
+README.md
+setup.py
+notty.egg-info/PKG-INFO
+notty.egg-info/SOURCES.txt
+notty.egg-info/dependency_links.txt
+notty.egg-info/requires.txt
+notty.egg-info/top_level.txt
+src/__init__.py
+src/index.py
+src/texted.py
+src/lib/AliasCommand.py
+src/lib/__init__.py
+src/lib/db.py
+src/screens/__init__.py
+src/screens/create.py
+src/screens/list.py
+src/utils/__init__.py
