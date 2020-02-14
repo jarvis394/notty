@@ -2,42 +2,52 @@
 from prompt_toolkit import prompt
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.formatted_text import HTML
-from datetime import datetime
-from notty.lib.db import Notes
+from lib.db import Notes
+from utils.date_now import date_now
+from colorama import Fore, Style
 
-def main():
+RS = Style.RESET_ALL
+
+
+def execute():
+    """Main execution function"""
+
+    # Notes database
     db = Notes()
-    bottom_toolbar = HTML('Press <style color="cyan"><b>Ctrl-S</b></style> to save a note and <style color="cyan"><b>Ctrl-C</b></style> to exit.')
+
+    # Bottom toolbar HTML text
+    bottom_toolbar = HTML(
+        'Press <style bg="blue"><b>Esc-Enter</b></style> to save a note and <style bg="blue"><b>Ctrl-C</b></style> to exit.')
+
+    # Key bindings for letting a user to exit
     kb = KeyBindings()
 
-    @kb.add('c-q')
-    def _(e):
-        print('\nExiting...')
-        e.app.exit()
-
-    def get_date():
-        return datetime.today().strftime('%c')
+    # Current date
+    DATE_NOW = date_now()
 
     def prompt_continuation(width, line_number, wrap_count):
         align = ''
-        if line_number < 9: align = '  '
-        elif line_number < 99: align = ' '
+        if line_number < 9:
+            align = '  '
+        elif line_number < 99:
+            align = ' '
 
         if wrap_count > 0:
             return HTML('<style color="gray">     │ </style>')
         else:
-            return HTML(f'<style color="gray"> {align}{line_number + 1} │ <style>')
+            return HTML(f'<style color="gray"> {align}{line_number + 1} │ </style>')
 
     def prompt_title():
         return prompt(
-            HTML('Set a <b><style color="cyan">title</style></b> to the note <style color="gray">(default is current date)</style>: '),
+            HTML('Set a <b><style color="blue">title</style></b> to the note <style color="gray">(default is current date)</style>: '),
             bottom_toolbar=bottom_toolbar,
             key_bindings=kb
         )
 
     def prompt_text():
         return prompt(
-            HTML('Write some <b><style color="cyan">text</style></b> to the note: \n\n   1 │ '),
+            HTML(
+                'Write some <b><style color="blue">text</style></b> to the note: \n\n<style color="gray">   1 │ </style>'),
             bottom_toolbar=bottom_toolbar,
             multiline=True,
             prompt_continuation=prompt_continuation,
@@ -45,14 +55,23 @@ def main():
             key_bindings=kb
         )
 
-    def run():
-        print('\n\n')
-
+    try:
         title = prompt_title()
-        text = prompt_text()
+        text = prompt_text().strip()
+    except KeyboardInterrupt:
+        print(f'\n  {Fore.YELLOW}Aborting.{RS}\n')
+        return
 
-        if title == '': title = get_date()
+    if title == '':
+        title = DATE_NOW
 
-        pass
+    if text == '':
+        print(f'\n\n   No text was found, {Fore.YELLOW}aborting{RS}. \n')
+        return
 
-    run()
+    # Write DB entry
+    
+    
+    print(HTML(f'<style color="blue">Successfully wrote your note to the storage with an ID {id}</style>'))
+
+    return [title, text, DATE_NOW]
