@@ -2,9 +2,11 @@
 from prompt_toolkit import prompt
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.formatted_text import HTML
-from lib.db import Notes
-from utils.date_now import date_now
+from notty.lib.db import Notes
+from notty.utils.date_now import date_now
 from colorama import Fore, Style
+from prompt_toolkit.application import get_app
+
 
 RS = Style.RESET_ALL
 
@@ -56,7 +58,7 @@ def execute():
 
     try:
         title = prompt_title()
-        text = prompt_text().strip()
+        text = prompt_text()
     except KeyboardInterrupt:
         print(f'\n  {Fore.YELLOW}Aborting.{RS}\n')
         return
@@ -64,12 +66,12 @@ def execute():
     if title == '':
         title = DATE_NOW
 
-    if text == '':
+    if text and text == '':
         print(f'\n\n   No text was found, {Fore.YELLOW}aborting{RS}. \n')
         return
 
     # Write DB entry
-    result = db.insert((title, text, DATE_NOW))
+    db.insert((title, text.strip(), DATE_NOW))
     id = db.db.lastrowid
 
     print(f'\n\nSuccessfully wrote {Fore.CYAN}your note{RS} to the storage with an ID {Fore.YELLOW}{id}{RS}')

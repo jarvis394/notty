@@ -30,12 +30,12 @@ class Notes:
         return self
 
     def update_text(self, id, text):
-        self.db.execute(f'UPDATE notes SET text = {text} WHERE id = {id};')
+        self.db.execute(f'UPDATE notes SET text = "{text}" WHERE id = {id};')
         self.connection.commit()
         return self
 
-    def update_text(self, id, title):
-        self.db.execute(f'UPDATE notes SET text = {title} WHERE id = {id};')
+    def update_title(self, id, title):
+        self.db.execute(f'UPDATE notes SET title = "{title}"" WHERE id = {id};')
         self.connection.commit()
         return self
 
