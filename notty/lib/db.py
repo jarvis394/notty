@@ -35,7 +35,12 @@ class Notes:
         return self
 
     def update_title(self, id, title):
-        self.db.execute(f'UPDATE notes SET title = "{title}"" WHERE id = {id};')
+        self.db.execute(f'UPDATE notes SET title = "{title}" WHERE id = {id};')
+        self.connection.commit()
+        return self
+
+    def delete(self, id):
+        self.db.execute(f'DELETE FROM notes WHERE id = {id}')
         self.connection.commit()
         return self
 

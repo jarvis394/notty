@@ -19,7 +19,7 @@ def execute():
 
     # Bottom toolbar HTML text
     bottom_toolbar = HTML(
-        'Press <style bg="cyan"><b>Esc-Enter</b></style> to save a note and <style bg="cyan"><b>Ctrl-C</b></style> to exit.')
+        'Press <style bg="blue"><b>Esc-Enter</b></style> to save a note and <style bg="blue"><b>Ctrl-C</b></style> to exit.')
 
     # Key bindings for letting a user to exit
     kb = KeyBindings()

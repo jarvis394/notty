@@ -1,69 +1,98 @@
 #!/usr/bin/env python
 """
-(Python >= 3.6)
-This is an example of how to prompt inside an application that uses the asyncio
-eventloop. The ``prompt_toolkit`` library will make sure that when other
-coroutines are writing to stdout, they write above the prompt, not destroying
-the input line.
-This example does several things:
-    1. It starts a simple coroutine, printing a counter to stdout every second.
-    2. It starts a simple input/echo app loop which reads from stdin.
-Very important is the following patch. If you are passing stdin by reference to
-other parts of the code, make sure that this patch is applied as early as
-possible. ::
-    sys.stdout = app.stdout_proxy()
+Demonstration of how to programmatically focus a certain widget.
 """
+from prompt_toolkit.application import Application
+from prompt_toolkit.buffer import Buffer
+from prompt_toolkit.document import Document
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.layout.containers import HSplit, VSplit, Window
+from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
+from prompt_toolkit.layout.layout import Layout
 
-import asyncio
+# 1. The layout
+top_text = (
+    "Focus example.\n"
+    "[q] Quit [a] Focus left top [b] Right top [c] Left bottom [d] Right bottom."
+)
 
-from prompt_toolkit.patch_stdout import patch_stdout
-from prompt_toolkit.shortcuts import PromptSession
-
-
-async def print_counter():
-    """
-    Coroutine that prints counters.
-    """
-    try:
-        i = 0
-        while True:
-            print("Counter: %i" % i)
-            i += 1
-            await asyncio.sleep(3)
-    except asyncio.CancelledError:
-        print("Background task cancelled.")
-
-
-async def interactive_shell():
-    """
-    Like `interactive_shell`, but doing things manual.
-    """
-    # Create Prompt.
-    session = PromptSession("Say something: ")
-
-    # Run echo loop. Read text from stdin, and reply it back.
-    while True:
-        try:
-            result = await session.prompt_async()
-            print('You said: "{0}"'.format(result))
-        except (EOFError, KeyboardInterrupt):
-            return
+LIPSUM = """Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+Maecenas quis interdum enim. Nam viverra, mauris et blandit malesuada, ante est
+bibendum mauris, ac dignissim dui tellus quis ligula. Aenean condimentum leo at
+dignissim placerat. In vel dictum ex, vulputate accumsan mi. Donec ut quam
+placerat massa tempor elementum. Sed tristique mauris ac suscipit euismod. Ut
+tempus vehicula augue non venenatis. Mauris aliquam velit turpis, nec congue
+risus aliquam sit amet. Pellentesque blandit scelerisque felis, faucibus
+consequat ante. Curabitur tempor tortor a imperdiet tincidunt. Nam sed justo
+sit amet odio bibendum congue. Quisque varius ligula nec ligula gravida, sed
+convallis augue faucibus. Nunc ornare pharetra bibendum. Praesent blandit ex
+quis sodales maximus. """
 
 
-async def main():
-    with patch_stdout():
-        background_task = asyncio.create_task(print_counter())
-        try:
-            await interactive_shell()
-        finally:
-            background_task.cancel()
-        print("Quitting event loop. Bye.")
+left_top = Window(BufferControl(Buffer(document=Document(LIPSUM))))
+left_bottom = Window(BufferControl(Buffer(document=Document(LIPSUM))))
+right_top = Window(BufferControl(Buffer(document=Document(LIPSUM))))
+right_bottom = Window(BufferControl(Buffer(document=Document(LIPSUM))))
+
+
+body = HSplit(
+    [
+        Window(FormattedTextControl(top_text), height=2, style="reverse"),
+        Window(height=1, char="-"),  # Horizontal line in the middle.
+        VSplit([left_top, Window(width=1, char="|"), right_top]),
+        Window(height=1, char="-"),  # Horizontal line in the middle.
+        VSplit([left_bottom, Window(width=1, char="|"), right_bottom]),
+    ]
+)
+
+
+# 2. Key bindings
+kb = KeyBindings()
+
+
+@kb.add("q")
+def _(event):
+    " Quit application. "
+    event.app.exit()
+
+
+@kb.add("a")
+def _(event):
+    event.app.layout.focus(left_top)
+
+
+@kb.add("b")
+def _(event):
+    event.app.layout.focus(right_top)
+
+
+@kb.add("c")
+def _(event):
+    event.app.layout.focus(left_bottom)
+
+
+@kb.add("d")
+def _(event):
+    event.app.layout.focus(right_bottom)
+
+
+@kb.add("tab")
+def _(event):
+    event.app.layout.focus_next()
+
+
+@kb.add("s-tab")
+def _(event):
+    event.app.layout.focus_previous()
+
+
+# 3. The `Application`
+application = Application(layout=Layout(body), key_bindings=kb, full_screen=True)
+
+
+def run():
+    application.run()
 
 
 if __name__ == "__main__":
-    try:
-        from asyncio import run
-    except ImportError:
-        asyncio.run_until_complete(main())
-    else:
-        asyncio.run(main())
+    run()

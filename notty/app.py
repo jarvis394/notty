@@ -12,14 +12,12 @@ def clear():
 def cli():
     pass
 
-@cli.command(aliases=['create', 'c'])
+@cli.command(aliases=['create', 'c'], help='creates a new note')
 def create():
-    clear()
     return screens.create.execute()
 
-@cli.command(aliases=['list', 'l'])
+@cli.command(aliases=['list', 'l'], help='lists your notes in a cool fancy window')
 def list():
-    clear()
     return screens.list.execute()
 
 # Initialize color support
