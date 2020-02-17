@@ -10,7 +10,6 @@ from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.layout.dimension import Dimension
 from prompt_toolkit.styles import Style as PromptStyle
-from prompt_toolkit.utils import Event
 from prompt_toolkit.widgets.base import Border
 from prompt_toolkit.widgets import TextArea, SearchToolbar
 from prompt_toolkit.application.current import get_app
@@ -286,14 +285,13 @@ def create_sidebar():
         scroll_offsets=ScrollOffsets(top=1, bottom=1),
     )
 
+class HandleTextChange:
+    def fire(e):
+        """ Updates the file state """
+        print(e)
+        if text_window.text != state.current_note.get('text'):
+            asyncio.create_task(state.show_notification("[ Saved the note ]", 1.5))
 
-def on_text_change_handler(e):
-    """ Updates the file state """
-    if text_window.text != state.current_note.get('text'):
-        asyncio.create_task(state.show_notification("[ Saved the note ]", 1.5))
-
-on_text_change = Event('$')
-on_text_change.add_handler(on_text_change_handler)
 
 sidebar = create_sidebar()
 text_window = TextArea(
@@ -303,7 +301,7 @@ text_window = TextArea(
     multiline=True,
     width=Dimension(min=24)
 )
-text_window.buffer.on_text_changed = on_text_change
+text_window.buffer.on_text_changed = HandleTextChange()
 body = HSplit([
     VSplit([
         sidebar,
