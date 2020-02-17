@@ -24,31 +24,72 @@ from notty.utils.if_mousedown import if_mousedown
 import asyncio
 
 
+MAX_TITLE_LENGTH = 35
+
+
 class ApplicationState:
     """
-    Application state.
+    Application state
     """
 
+    """ Current selected option index (in notes List) """
     selected_option_index = 0
+
+    """ Current note object """
     current_note = None
+
+    """ Current note text """
     current_text = ''
+
+    """ Current focused window """
     focused_window = None
+
+    """
+    Notification text to display
+    Used in self.show_notification
+    """
     notification_text = ''
+
+    """
+    State which describes if any float is displaying currently
+    Needed for disabling any <Tab> key bindings for windows when a float is displaying
+    """
     is_float_displaying = False
 
-    async def show_notification(self, message, timeout):
+    async def show_notification(self, message: str, timeout: int):
+        """
+        Shows notification in the reserved space for `timeout` and then hides
+
+        :param message: Message to display
+        :param timeout: Timeout
+        """
         self.notification_text = HTML(f"<style bg='white'>{message}</style>")
         await asyncio.sleep(timeout)
         self.notification_text = ''
 
 
-db = Notes()  # Database class
+# Database class
+db = Notes()
+
+# Useful borders. Used in Layout
 borders = Border()
+
+# Key bindings for the sidebar
 sidebar_bindings = KeyBindings()
+
+# Key bindings for focusing windows
 focus_bindings = KeyBindings()
+
+# Global keybindings
 kb = KeyBindings()
-notes = list(reversed(db.get_all()))  # All stored notes
+
+# All stored notes
+notes = list(reversed(db.get_all()))
+
+# Application state
 state = ApplicationState()
+
+# Application styles
 style = PromptStyle.from_dict(
     {
         "dim": "#444",
@@ -57,6 +98,7 @@ style = PromptStyle.from_dict(
         "sidebar.label": "bg:#000 #aaa",
         "sidebar.label selected": "bg:#000 #fff bold",
         "sidebar.label seldim": "bg:#444 #fff bold",
+        "sidebar.modified": "bg:orange white bold",
         "status": "reverse",
         "topbar": "bg:#fff bg:blue",
         "notification": "#000"
@@ -64,13 +106,14 @@ style = PromptStyle.from_dict(
 )
 
 # If no notes in DB then append a fake one to the cache with a custom flag
-if len(notes) == 0: notes.append({
-    'id': 0,
-    'title': date_now(),
-    'text': '',
-    'ts': date_now(),
-    '_INSERT_FLAG': True
-})
+if len(notes) == 0:
+    notes.append({
+        'id': 0,
+        'title': date_now(),
+        'text': '',
+        'ts': date_now(),
+        '_INSERT_FLAG': True
+    })
 
 
 #### Key bindings ####
@@ -78,16 +121,21 @@ if len(notes) == 0: notes.append({
 @kb.add("c-c", eager=True)
 @kb.add("c-x", eager=True)
 def _(event: KeyPressEvent):
+    """ Exit the application """
     try:
+        # Try to close SQLite DB connection
         db.close_conn()
     except Exception as e:
-        exception = Exception(f'Exception occurred on closing DB connection: {e}')
-        event.app.exit(exception=exception)
+        exception = Exception(
+            f'Exception occurred on closing DB connection: {e}')
+        return event.app.exit(exception=exception)
     else:
-        event.app.exit()
+        return event.app.exit()
+
 
 @kb.add("f1", eager=True)
 def _(event: KeyPressEvent):
+    """ Show help float to the user """
     help = HTML("""
         <b>Key combinations:</b>
             F1 - show this text
@@ -101,32 +149,43 @@ def _(event: KeyPressEvent):
             <i>All dangerous operations shows a confirmation dialog.</i>
 
         <b>File States:</b>
-            <style color="white" bg="green"> U </style> - the file contents were updated, needs save
+            <style color="white" bg="orange"> M </style> - the file contents were modified, needs save
     """)
-    show_message("Help", help)
+    return show_message("Help", help)
+
 
 @kb.add("f2", eager=True)
 def _(event: KeyPressEvent):
+    """ Renames the current note """
     async def coroutine():
         dialog = TextInputDialog(title="Rename")
         new_title = await show_dialog_as_float(dialog)
 
+        # Return if no title was entered
         if not new_title:
             return
 
+        # If no custom flag, then update the title directly in DB
+        # If the current note is located only in cache (notes List),
+        # then there wouldn't be any document to update (tl;dr; will cause SQLite error)
         if not state.current_note.get('_INSERT_FLAG'):
             db.update_title(state.current_note['id'], new_title)
         notes[state.selected_option_index]['title'] = new_title
 
-    asyncio.ensure_future(coroutine())
+    # Run coroutine
+    return asyncio.ensure_future(coroutine())
+
 
 @kb.add("c-t", eager=True)
 def _(event: KeyPressEvent):
+    """ Show the time of note creation """
     ts = f'[ {state.current_note.get("ts")} ]'
     asyncio.ensure_future(state.show_notification(ts, 2))
 
+
 @kb.add("c-n", eager=True)
 def _(event: KeyPressEvent):
+    """ Create a new note """
     notes.insert(0, {
         'title': date_now(),
         'text': '',
@@ -137,22 +196,29 @@ def _(event: KeyPressEvent):
     state.selected_option_index = 0
     event.app.layout.focus(text_window)
 
+
 @focus_bindings.add("tab", eager=True)
 def _(event: KeyPressEvent):
+    """ Focuses a next window """
     event.app.layout.focus_next()
     state.focused_window = event.app.layout.current_window
 
+
 @focus_bindings.add("s-tab", eager=True)
 def _(event: KeyPressEvent):
+    """ Focuses a previous window """
     event.app.layout.focus_previous()
     state.focused_window = event.app.layout.current_window
 
+
 @kb.add("c-s", eager=True)
 def _(event: KeyPressEvent):
+    """ Save the current note """
     text = text_window.document.text or ''
 
     if state.current_note.get('_INSERT_FLAG'):
-        db.insert((state.current_note['title'], text, state.current_note['ts']))
+        db.insert((state.current_note['title'],
+                   text, state.current_note['ts']))
     else:
         db.update_text(state.current_note['id'], text)
 
@@ -165,17 +231,21 @@ def _(event: KeyPressEvent):
 def get_titlebar_text():
     return [("class:bold", "Notes")]
 
+
 def get_current_note_title():
     if state.current_note:
         return state.current_note.get('title')
     else:
         return ''
 
+
 def get_notification_text():
     return state.notification_text
 
+
 def get_statusbar_text():
-    return HTML(" [F1] Help ")
+    return HTML(f" [F1] Help ")
+
 
 def get_statusbar_right_text():
     return " {}:{}  ".format(
@@ -185,18 +255,18 @@ def get_statusbar_right_text():
 
 
 def update_text_window(i: int):
-    """
-    Updates the text in text input window
-    """
+    """ Updates a text in text input window """
     state.current_note = notes[i]
     text_window.text = notes[i].get('text')
+
 
 def show_message(title, text):
     async def coroutine():
         dialog = MessageDialog(title, text)
         await show_dialog_as_float(dialog)
 
-    if not state.is_float_displaying: asyncio.ensure_future(coroutine())
+    if not state.is_float_displaying:
+        asyncio.ensure_future(coroutine())
 
 
 async def show_dialog_as_float(dialog):
@@ -218,25 +288,30 @@ async def show_dialog_as_float(dialog):
 
     return result
 
+
 def create_sidebar():
     """
-    Create the `Layout` for the sidebar with the configurable options.
+    Creates the `Layout` for the sidebar with the configurable options.
     """
 
     def get_text_fragments():
-        tokens = []
-        handle = sidebar_bindings.add
+        tokens = []  # List of tokens
+        handle = sidebar_bindings.add  # Shortcut for sidebar key bindings
 
-        def append(index, label):
+        def append(index, label, is_modified):
+            """ Appends new item to the tokens List """
+            # Current selected note state
             selected = index == state.selected_option_index
 
             @if_mousedown
             def select_item(mouse_event):
+                """ Select item if it was clicked """
                 state.selected_option_index = index
                 update_text_window(index)
 
             @handle("up")
             def _(event):
+                """ Handles <up> arrow key """
                 if state.selected_option_index - 1 < 0:
                     state.selected_option_index = len(notes) - 1
                 else:
@@ -245,6 +320,7 @@ def create_sidebar():
 
             @handle("down")
             def _(event):
+                """ Handles <down> arrow key """
                 if state.selected_option_index + 1 > len(notes) - 1:
                     state.selected_option_index = 0
                 else:
@@ -252,19 +328,26 @@ def create_sidebar():
                 update_text_window(state.selected_option_index)
 
             sel = ",selected" if selected and state.focused_window == sidebar else ",seldim" if selected else ""
+            modified = " M " if is_modified else ""
 
-            tokens.append(("class:sidebar.label" + sel, "%-36s" %
-                           label, select_item))
+            spaces = MAX_TITLE_LENGTH - len(label)
+            if is_modified:
+                spaces -= 3
+            
+            tokens.append(("class:sidebar.label" + sel, f"{label}{' ' * spaces} ", select_item))
 
             if selected:
                 tokens.append(("[SetCursorPosition]", ""))
 
+            if modified:
+                tokens.append(("class:sidebar.modified", modified))
+            
             tokens.append(("class:sidebar", "\n"))
 
         i = 0
         for note in notes:
             append(i, note['title'] if len(note['title'])
-                   < 36 else note['title'][0:32] + '...')
+                   < 32 else note['title'][0:28] + '...', note.get('is_modified'))
             i += 1
 
         return tokens
@@ -289,8 +372,9 @@ def create_sidebar():
 
 def on_text_change_handler(e: "TextChange"):
     """ Updates the file state """
-    if text_window.text != state.current_note.get('text'):
-        asyncio.create_task(state.show_notification("[ Saved the note ]", 1.5))
+    is_modified = text_window.text != state.current_note.get('text')
+    notes[state.selected_option_index]['is_modified'] = is_modified
+
 
 on_text_change = Event("TextChange")
 on_text_change.add_handler(on_text_change_handler)
@@ -366,8 +450,9 @@ application = Application(
     mouse_support=True,
     full_screen=True,
     style=style,
-    refresh_interval=0.2
+    refresh_interval=0.5
 )
+
 
 def execute():
     async def main():
