@@ -287,12 +287,12 @@ def create_sidebar():
     )
 
 
-def on_text_change_handler(e):
+def on_text_change_handler(e: "TextChange"):
     """ Updates the file state """
     if text_window.text != state.current_note.get('text'):
         asyncio.create_task(state.show_notification("[ Saved the note ]", 1.5))
 
-on_text_change = Event('$')
+on_text_change = Event("TextChange")
 on_text_change.add_handler(on_text_change_handler)
 
 sidebar = create_sidebar()

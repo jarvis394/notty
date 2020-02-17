@@ -1,8 +1,17 @@
 import sqlite3
+import appdirs
+import os
+
 
 class Notes:
     def __init__(self):
-        self.connection = sqlite3.connect('notty.db')
+        self.dirpath = os.path.join(appdirs.user_data_dir(), 'notty')
+        self.path = os.path.join(self.dirpath, 'main.db')
+        
+        if not os.path.exists(self.dirpath):
+            os.makedirs(self.dirpath)
+
+        self.connection = sqlite3.connect(self.path)
         self.db = self.connection.cursor()
 
         # Init the DB tables
@@ -16,16 +25,18 @@ class Notes:
         res = []
 
         for entry in data:
-            res.append({ 'id': entry[0], 'title': entry[1], 'text': entry[2], 'ts': entry[3] })
+            res.append({'id': entry[0], 'title': entry[1],
+                        'text': entry[2], 'ts': entry[3]})
         return res
 
     def get(self, id):
         data = self.db.execute(f'SELECT * FROM notes WHERE id = {id};')
         data = data.fetchone()
-        return { 'id': data[0], 'title': data[1], 'text': data[2], 'ts': data[3] }
+        return {'id': data[0], 'title': data[1], 'text': data[2], 'ts': data[3]}
 
     def insert(self, data):
-        self.db.execute(f'INSERT INTO notes (title, text, ts) VALUES (?, ?, ?);', data)
+        self.db.execute(
+            f'INSERT INTO notes (title, text, ts) VALUES (?, ?, ?);', data)
         self.connection.commit()
         return self
 
