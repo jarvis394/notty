@@ -369,8 +369,6 @@ application = Application(
     refresh_interval=0.2
 )
 
-# application.key_processor.
-
 def execute():
     async def main():
         update_text_window(0)
