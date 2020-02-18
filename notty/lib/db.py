@@ -7,11 +7,11 @@ class Notes:
     def __init__(self):
         self.dirpath = os.path.join(appdirs.user_data_dir(), 'notty')
         self.path = os.path.join(self.dirpath, 'main.db')
-        
+
         if not os.path.exists(self.dirpath):
             os.makedirs(self.dirpath)
 
-        self.connection = sqlite3.connect(self.path)
+        self.connection = sqlite3.connect(self.path, check_same_thread=False)
         self.db = self.connection.cursor()
 
         # Init the DB tables

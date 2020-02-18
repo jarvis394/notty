@@ -6,7 +6,7 @@ from prompt_toolkit.key_binding.bindings.focus import focus_next, focus_previous
 from prompt_toolkit.layout.containers import HSplit, VSplit, Window, WindowAlign, ScrollOffsets, Float, FloatContainer
 from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.key_binding.key_processor import KeyPressEvent
-from prompt_toolkit.formatted_text import HTML
+from prompt_toolkit.formatted_text import HTML, ANSI
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.layout.dimension import Dimension
 from prompt_toolkit.styles import Style as PromptStyle
@@ -22,9 +22,12 @@ from notty.lib.TextInputDialog import TextInputDialog
 from notty.utils.date_now import date_now
 from notty.utils.if_mousedown import if_mousedown
 import asyncio
+import threading
+import mdv
 
 
-MAX_TITLE_LENGTH = 35
+MAX_TITLE_LENGTH = 36
+SAVING_INTERVAL = 5
 
 
 class ApplicationState:
@@ -55,6 +58,8 @@ class ApplicationState:
     Needed for disabling any <Tab> key bindings for windows when a float is displaying
     """
     is_float_displaying = False
+
+    _save_job_timer = None
 
     async def show_notification(self, message: str, timeout: int):
         """
@@ -105,6 +110,16 @@ style = PromptStyle.from_dict(
     }
 )
 
+# Text editor
+text_window = TextArea(
+    text=mdv.main(state.current_text),
+    scrollbar=True,
+    line_numbers=True,
+    multiline=True,
+    width=Dimension(min=24),
+    focus_on_click=True
+)
+
 # If no notes in DB then append a fake one to the cache with a custom flag
 if len(notes) == 0:
     notes.append({
@@ -116,18 +131,38 @@ if len(notes) == 0:
     })
 
 
+def save_current_note():
+    """ Save the current note """
+    text = text_window.document.text or ''
+
+    if not state.current_note: return
+
+    if state.current_note.get('_INSERT_FLAG'):
+        db.insert((state.current_note['title'],
+                   text, state.current_note['ts']))
+    else:
+        db.update_text(state.current_note['id'], text)
+
+    notes[state.selected_option_index]['text'] = text
+#    asyncio.create_task(state.show_notification("[ Saved the note ]", 1.5))
+
+
 #### Key bindings ####
 
 @kb.add("c-c", eager=True)
 @kb.add("c-x", eager=True)
 def _(event: KeyPressEvent):
     """ Exit the application """
+    state._save_job_timer.cancel()
     try:
+        # Try saving
+        save_current_note()
+
         # Try to close SQLite DB connection
         db.close_conn()
     except Exception as e:
         exception = Exception(
-            f'Exception occurred on closing DB connection: {e}')
+            f'Exception occurred on exiting: {e}')
         return event.app.exit(exception=exception)
     else:
         return event.app.exit()
@@ -136,20 +171,17 @@ def _(event: KeyPressEvent):
 @kb.add("f1", eager=True)
 def _(event: KeyPressEvent):
     """ Show help float to the user """
-    help = HTML("""
+    help = HTML(f"""
         <b>Key combinations:</b>
             F1 - show this text
             F2 - rename the title of current note
             Ctrl-C - exit the application
-            Ctrl-S - save the current note
             Ctrl-N - create a new note
             Ctrl-D - delete the current note
             Tab / Shift-Tab - focus next / previous window
 
             <i>All dangerous operations shows a confirmation dialog.</i>
-
-        <b>File States:</b>
-            <style color="white" bg="orange"> M </style> - the file contents were modified, needs save
+            Notes are being saved in the interval of {SAVING_INTERVAL} seconds.
     """)
     return show_message("Help", help)
 
@@ -211,19 +243,14 @@ def _(event: KeyPressEvent):
     state.focused_window = event.app.layout.current_window
 
 
-@kb.add("c-s", eager=True)
-def _(event: KeyPressEvent):
-    """ Save the current note """
-    text = text_window.document.text or ''
+""" Save job """
+def save_job():
+    state._save_job_timer = threading.Timer(SAVING_INTERVAL, save_job)
+    state._save_job_timer.start()
 
-    if state.current_note.get('_INSERT_FLAG'):
-        db.insert((state.current_note['title'],
-                   text, state.current_note['ts']))
-    else:
-        db.update_text(state.current_note['id'], text)
+    save_current_note()
 
-    notes[state.selected_option_index]['text'] = text
-    asyncio.create_task(state.show_notification("[ Saved the note ]", 1.5))
+save_job()
 
 
 # Getters for windows' texts
@@ -254,10 +281,12 @@ def get_statusbar_right_text():
     )
 
 
+# Needed to be called `switch_note()`
 def update_text_window(i: int):
     """ Updates a text in text input window """
+#    notes[state.selected_option_index]['text'] = text_window.text
     state.current_note = notes[i]
-    text_window.text = notes[i].get('text')
+    text_window = Window(FormattedTextControl(ANSI(mdv.main(notes[i].get('text')))))
 
 
 def show_message(title, text):
@@ -306,12 +335,14 @@ def create_sidebar():
             @if_mousedown
             def select_item(mouse_event):
                 """ Select item if it was clicked """
+                save_current_note()
                 state.selected_option_index = index
                 update_text_window(index)
 
             @handle("up")
             def _(event):
                 """ Handles <up> arrow key """
+                save_current_note()
                 if state.selected_option_index - 1 < 0:
                     state.selected_option_index = len(notes) - 1
                 else:
@@ -321,6 +352,7 @@ def create_sidebar():
             @handle("down")
             def _(event):
                 """ Handles <down> arrow key """
+                save_current_note()
                 if state.selected_option_index + 1 > len(notes) - 1:
                     state.selected_option_index = 0
                 else:
@@ -328,39 +360,25 @@ def create_sidebar():
                 update_text_window(state.selected_option_index)
 
             sel = ",selected" if selected and state.focused_window == sidebar else ",seldim" if selected else ""
-            modified = " M " if is_modified else ""
-
             spaces = MAX_TITLE_LENGTH - len(label)
-            if is_modified:
-                spaces -= 3
-            
-            tokens.append(("class:sidebar.label" + sel, f"{label}{' ' * spaces} ", select_item))
+
+            tokens.append(("class:sidebar.label" + sel, f"{label}{' ' * spaces}", select_item))
 
             if selected:
                 tokens.append(("[SetCursorPosition]", ""))
 
-            if modified:
-                tokens.append(("class:sidebar.modified", modified))
-            
             tokens.append(("class:sidebar", "\n"))
 
         i = 0
         for note in notes:
             append(i, note['title'] if len(note['title'])
-                   < 32 else note['title'][0:28] + '...', note.get('is_modified'))
+                   < 32 else note['title'][0:(MAX_TITLE_LENGTH - 3)] + '...', note.get('is_modified'))
             i += 1
 
         return tokens
 
-    class Control(FormattedTextControl):
-        def move_cursor_down(self):
-            state.selected_option_index += 1
-
-        def move_cursor_up(self):
-            state.selected_option_index -= 1
-
     return Window(
-        content=Control(get_text_fragments, focusable=True),
+        content=FormattedTextControl(get_text_fragments, focusable=True),
         style="class:sidebar",
         width=Dimension(max=36, min=16, preferred=36),
         height=Dimension(min=3),
@@ -372,21 +390,14 @@ def create_sidebar():
 
 def on_text_change_handler(e: "TextChange"):
     """ Updates the file state """
-    is_modified = text_window.text != state.current_note.get('text')
-    notes[state.selected_option_index]['is_modified'] = is_modified
+#    text_window.text = mdv.main(text_window.text)
+    pass
 
 
 on_text_change = Event("TextChange")
 on_text_change.add_handler(on_text_change_handler)
 
 sidebar = create_sidebar()
-text_window = TextArea(
-    text=state.current_text,
-    scrollbar=True,
-    line_numbers=True,
-    multiline=True,
-    width=Dimension(min=24)
-)
 text_window.buffer.on_text_changed = on_text_change
 body = HSplit([
     VSplit([
@@ -458,6 +469,6 @@ def execute():
     async def main():
         update_text_window(0)
         state.focused_window = sidebar
-        await application.run_async()
+        return await application.run_async()
 
-    asyncio.run(main())
+    return asyncio.run(main())
