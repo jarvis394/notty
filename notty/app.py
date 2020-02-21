@@ -1,7 +1,7 @@
 import click
 import colorama
-import screens
-from lib.CommandAliases import ClickAliasedGroup
+import notty.screens as screens
+from notty.lib.CommandAliases import ClickAliasedGroup
 import os
 from colorama import Fore, Back, Style
 

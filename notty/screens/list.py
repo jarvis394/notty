@@ -23,11 +23,10 @@ from notty.utils.date_now import date_now
 from notty.utils.if_mousedown import if_mousedown
 import asyncio
 import threading
-import mdv
 
 
 MAX_TITLE_LENGTH = 36
-SAVING_INTERVAL = 5
+SAVING_INTERVAL = 60  # Once a minute
 
 
 class ApplicationState:
@@ -99,9 +98,8 @@ style = PromptStyle.from_dict(
     {
         "dim": "#444",
         "bold": "bold",
-        "sidebar": "bg:#000000",
-        "sidebar.label": "bg:#000 #aaa",
-        "sidebar.label selected": "bg:#000 #fff bold",
+        "sidebar.label": "#aaa",
+        "sidebar.label selected": "#fff bold",
         "sidebar.label seldim": "bg:#444 #fff bold",
         "sidebar.modified": "bg:orange white bold",
         "status": "reverse",
@@ -112,7 +110,7 @@ style = PromptStyle.from_dict(
 
 # Text editor
 text_window = TextArea(
-    text=mdv.main(state.current_text),
+    text=state.current_text,
     scrollbar=True,
     line_numbers=True,
     multiline=True,
@@ -144,7 +142,7 @@ def save_current_note():
         db.update_text(state.current_note['id'], text)
 
     notes[state.selected_option_index]['text'] = text
-#    asyncio.create_task(state.show_notification("[ Saved the note ]", 1.5))
+    pass
 
 
 #### Key bindings ####
@@ -243,14 +241,20 @@ def _(event: KeyPressEvent):
     state.focused_window = event.app.layout.current_window
 
 
+@kb.add('c-s')
+def _(e: KeyPressEvent):
+    " Save manually "
+    save_current_note()
+    asyncio.create_task(state.show_notification("[ Saved the note ]", 1.5))
+    pass
+
+
 """ Save job """
 def save_job():
     state._save_job_timer = threading.Timer(SAVING_INTERVAL, save_job)
     state._save_job_timer.start()
 
     save_current_note()
-
-save_job()
 
 
 # Getters for windows' texts
@@ -260,10 +264,7 @@ def get_titlebar_text():
 
 
 def get_current_note_title():
-    if state.current_note:
-        return state.current_note.get('title')
-    else:
-        return ''
+    return state.current_note.get('title') or ''
 
 
 def get_notification_text():
@@ -271,7 +272,7 @@ def get_notification_text():
 
 
 def get_statusbar_text():
-    return HTML(f" [F1] Help ")
+    return HTML(" [F1] Help ")
 
 
 def get_statusbar_right_text():
@@ -284,9 +285,8 @@ def get_statusbar_right_text():
 # Needed to be called `switch_note()`
 def update_text_window(i: int):
     """ Updates a text in text input window """
-#    notes[state.selected_option_index]['text'] = text_window.text
     state.current_note = notes[i]
-    text_window = Window(FormattedTextControl(ANSI(mdv.main(notes[i].get('text')))))
+    text_window.text = notes[i].get('text')
 
 
 def show_message(title, text):
@@ -390,7 +390,6 @@ def create_sidebar():
 
 def on_text_change_handler(e: "TextChange"):
     """ Updates the file state """
-#    text_window.text = mdv.main(text_window.text)
     pass
 
 
@@ -402,7 +401,7 @@ text_window.buffer.on_text_changed = on_text_change
 body = HSplit([
     VSplit([
         sidebar,
-        Window(width=1, char=borders.VERTICAL, style="class:line"),
+        Window(width=2, char=f'{borders.VERTICAL} ', style="class:line"),
         text_window
     ]),
     Window(
@@ -469,6 +468,7 @@ def execute():
     async def main():
         update_text_window(0)
         state.focused_window = sidebar
+        save_job()
         return await application.run_async()
 
     return asyncio.run(main())
