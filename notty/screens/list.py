@@ -188,6 +188,7 @@ def _(event: KeyPressEvent):
             F2 - rename the title of current note
             Ctrl-C - exit the application
             Ctrl-N - create a new note
+            Ctrl-T - show time of a note's creation
             Ctrl-D - delete the current note
             Tab / Shift-Tab - focus next / previous window
 
@@ -258,14 +259,16 @@ def _(event: KeyPressEvent):
         event.app.layout.focus(sidebar)
 
     # Run coroutine
-    return asyncio.ensure_future(coroutine())
+    if len(notes) != 0:
+        asyncio.ensure_future(coroutine())
 
 
 @kb.add("c-t", eager=True)
 def _(event: KeyPressEvent):
     """ Show the time of note creation """
-    ts = f'[ {state.current_note.get("ts")} ]'
-    asyncio.ensure_future(state.show_notification(ts, 2))
+    if len(notes) != 0:
+        ts = f'[ {state.current_note.get("ts")} ]'
+        asyncio.ensure_future(state.show_notification(ts, 2))
 
 
 @kb.add("c-n", eager=True)
