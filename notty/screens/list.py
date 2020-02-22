@@ -9,6 +9,7 @@ from prompt_toolkit.key_binding.key_processor import KeyPressEvent
 from prompt_toolkit.formatted_text import HTML, ANSI
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.layout.dimension import Dimension
+from prompt_toolkit.shortcuts import yes_no_dialog, message_dialog, input_dialog
 from prompt_toolkit.styles import Style as PromptStyle
 from prompt_toolkit.utils import Event
 from prompt_toolkit.widgets.base import Border
@@ -19,6 +20,7 @@ from colorama import Fore, Style
 from notty.lib.db import Notes
 from notty.lib.MessageDialog import MessageDialog
 from notty.lib.TextInputDialog import TextInputDialog
+from notty.lib.ConfirmationDialog import ConfirmationDialog
 from notty.utils.date_now import date_now
 from notty.utils.if_mousedown import if_mousedown
 import asyncio
@@ -153,7 +155,9 @@ def _(event: KeyPressEvent):
     """ Exit the application """
     state._save_job_timer.cancel()
     try:
-        # Try saving
+        # Try saving current note
+        # We do not try to save other notes, because they are already saved
+        # when user switches the current note
         save_current_note()
 
         # Try to close SQLite DB connection
@@ -201,6 +205,44 @@ def _(event: KeyPressEvent):
         if not state.current_note.get('_INSERT_FLAG'):
             db.update_title(state.current_note['id'], new_title)
         notes[state.selected_option_index]['title'] = new_title
+
+    # Run coroutine
+    return asyncio.ensure_future(coroutine())
+
+
+@kb.add("c-d", eager=True)
+def _(event: KeyPressEvent):
+    """ Deletes the current note """
+    async def coroutine():
+        dialog = ConfirmationDialog(title="Rename", yes_text="Delete", no_text="Cancel", text="Delete?")
+        result = await show_dialog_as_float(dialog)
+
+        # Return if canceled
+        if not result:
+            return
+
+        if not state.current_note.get('_INSERT_FLAG'):
+            db.delete(state.current_note.get("id"))
+        del notes[state.selected_option_index]
+
+        i = state.selected_option_index
+        if len(notes) - 1 < i:
+            i = i - 1
+        update_text_window(i)
+
+        # If no notes in DB then append a fake one to the cache with a custom flag
+        if len(notes) == 0:
+            notes.append({
+                'id': 0,
+                'title': date_now(),
+                'text': '',
+                'ts': date_now(),
+                '_INSERT_FLAG': True
+            })
+
+            update_text_window(0)
+            state.selected_option_index = 0
+            event.app.layout.focus(text_window)
 
     # Run coroutine
     return asyncio.ensure_future(coroutine())
