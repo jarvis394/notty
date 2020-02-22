@@ -1,9 +1,11 @@
 from asyncio import Future
 from prompt_toolkit.layout.dimension import D
+from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.widgets import (
     Button,
     Dialog,
-    Label
+    Label,
+    TextArea
 )
 from prompt_toolkit.layout.containers import HSplit
 
@@ -18,7 +20,7 @@ class MessageDialog:
 
         self.dialog = Dialog(
             title=title,
-            body=HSplit([Label(text=text),]),
+            body=HSplit([TextArea(text=text, read_only=True, multiline=True, scrollbar=True)]),
             buttons=[ok_button],
             width=D(preferred=80),
             modal=True

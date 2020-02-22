@@ -3,8 +3,9 @@ from prompt_toolkit.application import Application
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.key_binding import KeyBindings, merge_key_bindings, ConditionalKeyBindings
 from prompt_toolkit.key_binding.bindings.focus import focus_next, focus_previous
-from prompt_toolkit.layout.containers import HSplit, VSplit, Window, WindowAlign, ScrollOffsets, Float, FloatContainer
+from prompt_toolkit.layout.containers import HSplit, VSplit, Window, WindowAlign, VerticalAlign, ScrollOffsets, Float, FloatContainer
 from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
+from prompt_toolkit.layout import ConditionalContainer
 from prompt_toolkit.key_binding.key_processor import KeyPressEvent
 from prompt_toolkit.formatted_text import HTML, ANSI
 from prompt_toolkit.layout.layout import Layout
@@ -120,30 +121,37 @@ text_window = TextArea(
     focus_on_click=True
 )
 
-# If no notes in DB then append a fake one to the cache with a custom flag
-if len(notes) == 0:
-    notes.append({
-        'id': 0,
-        'title': date_now(),
-        'text': '',
-        'ts': date_now(),
-        '_INSERT_FLAG': True
-    })
-
 
 def save_current_note():
     """ Save the current note """
     text = text_window.document.text or ''
 
-    if not state.current_note: return
+    if not state.current_note:
+        return
 
     if state.current_note.get('_INSERT_FLAG'):
         db.insert((state.current_note['title'],
                    text, state.current_note['ts']))
+        del state.current_note['_INSERT_FLAG']
     else:
         db.update_text(state.current_note['id'], text)
 
     notes[state.selected_option_index]['text'] = text
+    pass
+
+
+def create_initial_note():
+    return {
+        'id': 0,
+        'title': date_now(),
+        'text': '',
+        'ts': date_now(),
+        '_INSERT_FLAG': True
+    }
+
+
+def insert_note_to_cache(note):
+    notes.insert(0, note)
     pass
 
 
@@ -155,10 +163,11 @@ def _(event: KeyPressEvent):
     """ Exit the application """
     state._save_job_timer.cancel()
     try:
-        # Try saving current note
+        # Try saving current note if `state.current_note` is provided
         # We do not try to save other notes, because they are already saved
         # when user switches the current note
-        save_current_note()
+        if state.current_note:
+            save_current_note()
 
         # Try to close SQLite DB connection
         db.close_conn()
@@ -173,8 +182,8 @@ def _(event: KeyPressEvent):
 @kb.add("f1", eager=True)
 def _(event: KeyPressEvent):
     """ Show help float to the user """
-    help = HTML(f"""
-        <b>Key combinations:</b>
+    help = f"""
+        Key combinations:
             F1 - show this text
             F2 - rename the title of current note
             Ctrl-C - exit the application
@@ -182,9 +191,9 @@ def _(event: KeyPressEvent):
             Ctrl-D - delete the current note
             Tab / Shift-Tab - focus next / previous window
 
-            <i>All dangerous operations shows a confirmation dialog.</i>
+            All dangerous operations shows a confirmation dialog.
             Notes are being saved in the interval of {SAVING_INTERVAL} seconds.
-    """)
+    """
     return show_message("Help", help)
 
 
@@ -196,8 +205,11 @@ def _(event: KeyPressEvent):
         new_title = await show_dialog_as_float(dialog)
 
         # Return if no title was entered
-        if not new_title:
-            return
+        if not new_title or (new_title and new_title.strip() == ''):
+            asyncio.ensure_future(state.show_notification('[ No text was entered ]', 1.5))
+            return None
+        
+        new_title = new_title.strip()
 
         # If no custom flag, then update the title directly in DB
         # If the current note is located only in cache (notes List),
@@ -205,6 +217,9 @@ def _(event: KeyPressEvent):
         if not state.current_note.get('_INSERT_FLAG'):
             db.update_title(state.current_note['id'], new_title)
         notes[state.selected_option_index]['title'] = new_title
+
+    if not state.current_note:
+        return
 
     # Run coroutine
     return asyncio.ensure_future(coroutine())
@@ -214,35 +229,33 @@ def _(event: KeyPressEvent):
 def _(event: KeyPressEvent):
     """ Deletes the current note """
     async def coroutine():
-        dialog = ConfirmationDialog(title="Rename", yes_text="Delete", no_text="Cancel", text="Delete?")
+        dialog = ConfirmationDialog(
+            title="Delete", yes_text="Yes", no_text="Cancel", text="Do you want to delete the note?")
         result = await show_dialog_as_float(dialog)
 
         # Return if canceled
         if not result:
             return
 
+        # If the current note doesn't have a custom flag then it is in DB
+        # so we need to manually call .delete() method. In any way, #
+        # we should delete the note in cache
         if not state.current_note.get('_INSERT_FLAG'):
             db.delete(state.current_note.get("id"))
         del notes[state.selected_option_index]
 
+        # Get updated current index
         i = state.selected_option_index
-        if len(notes) - 1 < i:
+        if len(notes) - 1 < i and len(notes) != 0:
             i = i - 1
+        elif len(notes) == 0:
+            state.current_note = None
+            return None
+
         update_text_window(i)
-
-        # If no notes in DB then append a fake one to the cache with a custom flag
-        if len(notes) == 0:
-            notes.append({
-                'id': 0,
-                'title': date_now(),
-                'text': '',
-                'ts': date_now(),
-                '_INSERT_FLAG': True
-            })
-
-            update_text_window(0)
-            state.selected_option_index = 0
-            event.app.layout.focus(text_window)
+        state.selected_option_index = i
+        state.focused_window = sidebar
+        event.app.layout.focus(sidebar)
 
     # Run coroutine
     return asyncio.ensure_future(coroutine())
@@ -258,14 +271,10 @@ def _(event: KeyPressEvent):
 @kb.add("c-n", eager=True)
 def _(event: KeyPressEvent):
     """ Create a new note """
-    notes.insert(0, {
-        'title': date_now(),
-        'text': '',
-        'ts': date_now(),
-        '_INSERT_FLAG': True
-    })
+    insert_note_to_cache(create_initial_note())
     update_text_window(0)
     state.selected_option_index = 0
+    state.focused_window = text_window
     event.app.layout.focus(text_window)
 
 
@@ -286,17 +295,19 @@ def _(event: KeyPressEvent):
 @kb.add('c-s')
 def _(e: KeyPressEvent):
     " Save manually "
-    save_current_note()
-    asyncio.create_task(state.show_notification("[ Saved the note ]", 1.5))
+    if state.current_note:
+        save_current_note()
+        asyncio.create_task(state.show_notification("[ Saved the note ]", 1.5))
     pass
 
 
-""" Save job """
 def save_job():
+    """ Save job """
     state._save_job_timer = threading.Timer(SAVING_INTERVAL, save_job)
     state._save_job_timer.start()
 
-    save_current_note()
+    if state.current_note:
+        save_current_note()
 
 
 # Getters for windows' texts
@@ -306,7 +317,7 @@ def get_titlebar_text():
 
 
 def get_current_note_title():
-    return state.current_note.get('title') or ''
+    return state.current_note.get('title') if state.current_note else ""
 
 
 def get_notification_text():
@@ -321,19 +332,23 @@ def get_statusbar_right_text():
     return " {}:{}  ".format(
         text_window.document.cursor_position_row + 1,
         text_window.document.cursor_position_col + 1,
-    )
+    ) if state.current_note else ""
 
 
 # Needed to be called `switch_note()`
 def update_text_window(i: int):
     """ Updates a text in text input window """
-    state.current_note = notes[i]
-    text_window.text = notes[i].get('text')
+    try:
+        state.current_note = notes[i]
+        text_window.text = notes[i].get('text')
+    except:
+        pass
 
 
 def show_message(title, text):
     async def coroutine():
         dialog = MessageDialog(title, text)
+        state.focused_window = dialog
         await show_dialog_as_float(dialog)
 
     if not state.is_float_displaying:
@@ -404,7 +419,8 @@ def create_sidebar():
             sel = ",selected" if selected and state.focused_window == sidebar else ",seldim" if selected else ""
             spaces = MAX_TITLE_LENGTH - len(label)
 
-            tokens.append(("class:sidebar.label" + sel, f"{label}{' ' * spaces}", select_item))
+            tokens.append(("class:sidebar.label" + sel,
+                           f"{label}{' ' * spaces}", select_item))
 
             if selected:
                 tokens.append(("[SetCursorPosition]", ""))
@@ -430,22 +446,34 @@ def create_sidebar():
     )
 
 
-def on_text_change_handler(e: "TextChange"):
-    """ Updates the file state """
-    pass
-
-
-on_text_change = Event("TextChange")
-on_text_change.add_handler(on_text_change_handler)
+# def on_text_change_handler(e: "TextChange"):
+#     """ Text change handler """
+#     pass
+# on_text_change = Event("TextChange")
+# on_text_change.add_handler(on_text_change_handler)
+# text_window.buffer.on_text_changed = on_text_change
 
 sidebar = create_sidebar()
-text_window.buffer.on_text_changed = on_text_change
+no_notes_text = Window(
+    FormattedTextControl(HTML('\n\n\nNo notes!\nCreate new one by hitting <style color="blue"><b>Ctrl-N</b></style>')),
+    align=WindowAlign.CENTER,
+)
+
+main_window = VSplit([
+    sidebar,
+    Window(width=2, char=f'{borders.VERTICAL} ', style="class:line"),
+    text_window
+])
+
 body = HSplit([
-    VSplit([
-        sidebar,
-        Window(width=2, char=f'{borders.VERTICAL} ', style="class:line"),
-        text_window
-    ]),
+    ConditionalContainer(
+        main_window,
+        filter=Condition(lambda: state.current_note)
+    ),
+    ConditionalContainer(
+        no_notes_text, 
+        filter=Condition(lambda: not state.current_note)
+    ),
     Window(
         content=FormattedTextControl(get_notification_text),
         height=1,
@@ -485,7 +513,8 @@ root_container = FloatContainer(HSplit(
     floats=[]
 )
 application = Application(
-    layout=Layout(root_container, focused_element=sidebar),
+    layout=Layout(root_container,
+                  focused_element=sidebar),
     key_bindings=merge_key_bindings([
         kb,
         ConditionalKeyBindings(
