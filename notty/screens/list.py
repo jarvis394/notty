@@ -455,7 +455,7 @@ def create_sidebar():
 
 sidebar = create_sidebar()
 no_notes_text = Window(
-    FormattedTextControl(HTML('\n\n\nNo notes!\nCreate new one by hitting <style color="blue"><b>Ctrl-N</b></style>')),
+    FormattedTextControl(HTML('\n\n\nNo notes!\nCreate a new one by hitting <style color="blue"><b>Ctrl-N</b></style>')),
     align=WindowAlign.CENTER,
 )
 
