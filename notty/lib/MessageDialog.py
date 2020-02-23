@@ -9,6 +9,7 @@ from prompt_toolkit.widgets import (
 )
 from prompt_toolkit.layout.containers import HSplit
 
+
 class MessageDialog:
     def __init__(self, title, text):
         self.future = Future()
@@ -35,5 +36,3 @@ class MessageDialog:
 
     def __pt_container__(self):
         return self.dialog
-
-

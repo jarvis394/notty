@@ -70,7 +70,9 @@ class ApplicationState:
         :param message: Message to display
         :param timeout: Timeout
         """
-        self.notification_text = HTML(f"<style bg='white'>{message}</style>")
+        self.notification_text = HTML(
+            f"<style bg=\"white\">[ {message} ]</style>"
+        )
         await asyncio.sleep(timeout)
         self.notification_text = ''
 
@@ -207,7 +209,8 @@ def _(event: KeyPressEvent):
 
         # Return if no title was entered
         if not new_title or (new_title and new_title.strip() == ''):
-            asyncio.ensure_future(state.show_notification('[ No text was entered ]', 1.5))
+            asyncio.ensure_future(
+                state.show_notification("No text was entered" if new_title == '' else "Rename canceled", 1.5))
             return None
 
         new_title = new_title.strip()
@@ -266,14 +269,17 @@ def _(event: KeyPressEvent):
 @kb.add("c-t", eager=True)
 def _(event: KeyPressEvent):
     """ Show the time of note creation """
-    if len(notes) != 0:
-        ts = f'[ {state.current_note.get("ts")} ]'
+    if len(notes) != 0 and not state.is_float_displaying:
+        ts = state.current_note.get("ts")
         asyncio.ensure_future(state.show_notification(ts, 2))
 
 
 @kb.add("c-n", eager=True)
 def _(event: KeyPressEvent):
     """ Create a new note """
+    if state.is_float_displaying:
+        return
+    
     insert_note_to_cache(create_initial_note())
     update_text_window(0)
     state.selected_option_index = 0
@@ -298,10 +304,9 @@ def _(event: KeyPressEvent):
 @kb.add('c-s')
 def _(e: KeyPressEvent):
     " Save manually "
-    if state.current_note:
+    if state.current_note and not state.is_float_displaying:
         save_current_note()
-        asyncio.create_task(state.show_notification("[ Saved the note ]", 1.5))
-    pass
+        asyncio.create_task(state.show_notification("Saved the note", 1.5))
 
 
 def save_job():
@@ -453,16 +458,10 @@ def create_sidebar():
     )
 
 
-# def on_text_change_handler(e: "TextChange"):
-#     """ Text change handler """
-#     pass
-# on_text_change = Event("TextChange")
-# on_text_change.add_handler(on_text_change_handler)
-# text_window.buffer.on_text_changed = on_text_change
-
 sidebar = create_sidebar()
 no_notes_text = Window(
-    FormattedTextControl(HTML('\n\n\nNo notes!\nCreate a new one by hitting <style color="blue"><b>Ctrl-N</b></style>')),
+    FormattedTextControl(HTML(
+        '\n\n\nNo notes!\nCreate a new one by hitting <style color="blue"><b>Ctrl-N</b></style>')),
     align=WindowAlign.CENTER,
 )
 
@@ -520,8 +519,7 @@ root_container = FloatContainer(HSplit(
     floats=[]
 )
 application = Application(
-    layout=Layout(root_container,
-                  focused_element=sidebar),
+    layout=Layout(root_container, focused_element=sidebar),
     key_bindings=merge_key_bindings([
         kb,
         ConditionalKeyBindings(

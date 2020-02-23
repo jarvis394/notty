@@ -1,79 +1,271 @@
-#!/usr/bin/env python
-from prompt_toolkit import prompt
+from prompt_toolkit.application import Application
 from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.layout import Layout
+from prompt_toolkit.widgets import TextArea, Button
+from prompt_toolkit.shortcuts import prompt
+from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.formatted_text import HTML
+from prompt_toolkit.application.current import get_app
+from prompt_toolkit.layout.containers import HSplit, VSplit, Window, WindowAlign, Float, FloatContainer
 from notty.lib.db import Notes
 from notty.utils.date_now import date_now
 from colorama import Fore, Style
-from prompt_toolkit.application import get_app
-
+from prompt_toolkit.styles import Style as PromptStyle
+from notty.lib.TextInputDialog import TextInputDialog
+from notty.lib.ConfirmationDialog import ConfirmationDialog
+from notty.lib.MessageDialog import MessageDialog
+from notty.lib.db import Notes
+import asyncio
 
 RS = Style.RESET_ALL
+NOW = date_now()
+
+
+class ApplicationState:
+    title = NOW
+    text = ''
+    note_id = None
+    is_float_displaying = False
+    is_saved = False
+    notification_text = None
+
+    async def show_notification(self, message: str, timeout: int):
+        """
+        Shows notification in the reserved space for `timeout` and then hides
+
+        :param message: Message to display
+        :param timeout: Timeout
+        """
+        self.notification_text = HTML(
+            f"<style bg=\"white\" color=\"black\">[ {message} ]</style>")
+        await asyncio.sleep(timeout)
+        self.notification_text = None
+
+
+db = Notes()
+state = ApplicationState()
+style = PromptStyle.from_dict(
+    {
+        "dim": "#444",
+        "bold": "bold",
+        "status": "reverse",
+        "topbar": "bg:#fff bg:blue",
+        "line": "#fff",
+        "notification": "#fff"
+    }
+)
+
+
+def abort():
+    app = get_app()
+    if get_app().is_running:
+        print()
+        print(f'  {Fore.YELLOW}Aborting.{RS}')
+        print()
+
+        try:
+            db.close_conn()
+        except:
+            exception = Exception(f'Exception occurred on exiting: {e}')
+            return app.exit(exception=exception)
+        return app.exit()
+
+
+async def show_dialog_as_float(dialog):
+    " Coroutine. "
+    float_ = Float(content=dialog)
+    root_container.floats.insert(0, float_)
+
+    app = get_app()
+
+    focused_before = app.layout.current_window
+    app.layout.focus(dialog)
+    state.is_float_displaying = True
+    result = await dialog.future
+    state.is_float_displaying = False
+    app.layout.focus(focused_before)
+
+    if float_ in root_container.floats:
+        root_container.floats.remove(float_)
+
+    return result
+
+
+def get_topbar_text():
+    return [("class:bold", str(state.is_saved))]
+
+
+def get_statusbar_upper_text():
+    return state.notification_text or state.title
+
+
+def get_statusbar_right_text():
+    return " {}:{}  ".format(
+        text_window.document.cursor_position_row + 1,
+        text_window.document.cursor_position_col + 1,
+    )
+
+
+# Global key bindings
+kb = KeyBindings()
+
+top_bar = Window(
+    height=1,
+    content=FormattedTextControl(get_topbar_text),
+    align=WindowAlign.CENTER,
+    style="class:topbar"
+)
+text_window = TextArea(
+    text=state.text,
+    multiline=True,
+    wrap_lines=True,
+    focusable=True,
+    scrollbar=True,
+    line_numbers=True
+)
+title_bar = Window(
+    FormattedTextControl(get_statusbar_upper_text),
+    align=WindowAlign.CENTER,
+    style="class:notification",
+    height=1
+)
+status_bar = VSplit([
+    Window(
+        FormattedTextControl(HTML(
+            'Press <style bg="blue"><b>F2</b></style> or <style bg="blue"><b>Ctrl-R</b></style> to set a title')),
+        style="class:status"
+    ),
+    Window(
+        FormattedTextControl(get_statusbar_right_text),
+        style="class:status.right, bold",
+        width=9,
+        align=WindowAlign.RIGHT,
+    )],
+    height=1
+)
+
+root_container = FloatContainer(
+    HSplit([
+        top_bar,
+        text_window,
+        title_bar,
+        status_bar
+    ]),
+    floats=[]
+)
+layout = Layout(container=root_container, focused_element=text_window)
+
+
+@kb.add("c-x", eager=True)
+@kb.add("c-c", eager=True)
+def _(event):
+    " Quit application "
+    async def coroutine():
+        current_text = text_window.text
+
+        def save_handler(s):
+            if current_text == '':
+                dialog = MessageDialog(
+                    title="Exit",
+                    text="Note with empty content will not be saved",
+                )
+                res = await show_dialog_as_float(dialog)
+            else:
+                db.insert((state.title, current_text, NOW))
+            s.future.set_result(True)
+
+        if state.is_saved:
+            if current_text == "":
+                dialog = ConfirmationDialog(
+                    title="Exit",
+                    text="Note with empty content will be deleted",
+                    yes_text="Delete",
+                    no_text="Cancel"
+                )
+                res = await show_dialog_as_float(dialog)
+
+                if res:
+                    db.delete(state.note_id)
+                else:
+                    return False
+            else:
+                db.update_text(state.note_id, text_window.text)
+        else:
+            dialog = ConfirmationDialog(
+                title="Exit",
+                text="Exit without saving?",
+                yes_text="Yes",
+                no_text="Cancel",
+                button=('Save', save_handler)
+            )
+            res = await show_dialog_as_float(dialog)
+
+            # If canceled then do not exit the app
+            if not res:
+                return False
+
+        return abort()
+
+    # Run coroutine
+    return asyncio.ensure_future(coroutine())
+
+
+@kb.add("c-s", eager=True)
+def _(event):
+    if state.is_saved:
+        return False
+
+    if state.note_id:
+        db.update_text(state.note_id, text_window.text)
+    else:
+        db.insert((state.title, text_window.text, NOW))
+        state.note_id = db.db.lastrowid
+
+    state.is_saved = True
+    asyncio.create_task(state.show_notification("Saved the note", 1.5))
+
+
+@kb.add("c-r", eager=True)
+@kb.add("f2", eager=True)
+def _(event):
+    " Rename the note "
+    async def coroutine():
+        dialog = TextInputDialog(title="Rename")
+        new_title = await show_dialog_as_float(dialog)
+
+        # Return if no title was entered
+        if not new_title or (new_title and new_title.strip() == ''):
+            return None
+
+        state.title = new_title.strip()
+        state.is_saved = False
+        return True
+
+    # Run coroutine
+    return asyncio.ensure_future(coroutine())
+
+
+def on_text_change_handler(e: "TextChange"):
+    """ Text change handler """
+    if state.is_saved:
+        state.is_saved = False
+
+
+text_window.buffer.on_text_changed.add_handler(on_text_change_handler)
+
+# Build a main application object
+application = Application(
+    layout=layout,
+    key_bindings=kb,
+    full_screen=True,
+    erase_when_done=False,
+    style=style,
+    refresh_interval=0.5
+)
 
 
 def execute():
-    """Main execution function"""
+    async def main():
+        return await application.run_async()
 
-    # Notes database
-    db = Notes()
-
-    # Bottom toolbar HTML text
-    bottom_toolbar = HTML(
-        'Press <style bg="blue"><b>Esc-Enter</b></style> to save a note and <style bg="blue"><b>Ctrl-C</b></style> to exit.')
-
-    # Key bindings for letting a user to exit
-    kb = KeyBindings()
-
-    # Current date
-    DATE_NOW = date_now()
-
-    def prompt_continuation(width, line_number, wrap_count):
-        align = ''
-        if line_number < 9:
-            align = '  '
-        elif line_number < 99:
-            align = ' '
-
-        if wrap_count > 0:
-            return HTML('<style color="gray">     │ </style>')
-        else:
-            return HTML(f'<style color="gray"> {align}{line_number + 1} │ </style>')
-
-    def prompt_title():
-        return prompt(
-            HTML('Set a <b><style color="cyan">title</style></b> to the note <style color="gray">(default is current date)</style>: '),
-            key_bindings=kb
-        )
-
-    def prompt_text():
-        return prompt(
-            HTML(
-                'Write some <b><style color="cyan">text</style></b> to the note: \n\n<style color="gray">   1 │ </style>'),
-            bottom_toolbar=bottom_toolbar,
-            multiline=True,
-            prompt_continuation=prompt_continuation,
-            mouse_support=True,
-            key_bindings=kb
-        )
-
-    try:
-        title = prompt_title()
-        text = prompt_text()
-    except KeyboardInterrupt:
-        print(f'\n  {Fore.YELLOW}Aborting.{RS}\n')
-        return
-
-    if title == '':
-        title = DATE_NOW
-
-    if text and text == '':
-        print(f'\n\n   No text was found, {Fore.YELLOW}aborting{RS}. \n')
-        return
-
-    # Write DB entry
-    db.insert((title, text.strip(), DATE_NOW))
-    id = db.db.lastrowid
-
-    print(f'\n\nSuccessfully wrote {Fore.CYAN}your note{RS} to the storage with an ID {Fore.YELLOW}{id}{RS}')
-
-    return [title, text, DATE_NOW]
+    return asyncio.run(main())

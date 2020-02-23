@@ -31,6 +31,7 @@ class TextInputDialog:
             multiline=False,
             width=D(preferred=40),
             accept_handler=accept_text,
+            style="bg:#ccc"
         )
 
         ok_button = Button(text="OK", handler=accept)
