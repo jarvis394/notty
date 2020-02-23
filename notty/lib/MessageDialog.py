@@ -17,10 +17,17 @@ class MessageDialog:
             self.future.set_result(None)
 
         ok_button = Button(text="OK", handler=(lambda: set_done()))
-
+        text_window = TextArea(
+            text=text,
+            wrap_lines=False,
+            read_only=True,
+            multiline=True,
+            scrollbar=True,
+            style="bg:white"
+        )
         self.dialog = Dialog(
             title=title,
-            body=HSplit([TextArea(text=text, read_only=True, multiline=True, scrollbar=True)]),
+            body=HSplit([text_window]),
             buttons=[ok_button],
             width=D(preferred=80),
             modal=True

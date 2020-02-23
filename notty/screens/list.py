@@ -180,21 +180,21 @@ def _(event: KeyPressEvent):
 
 
 @kb.add("f1", eager=True)
-def _(event: KeyPressEvent):
+def show_help(event: KeyPressEvent):
     """ Show help float to the user """
-    help = f"""
-        Key combinations:
-            F1 - show this text
-            F2 - rename the title of current note
-            Ctrl-C - exit the application
-            Ctrl-N - create a new note
-            Ctrl-T - show time of a note's creation
-            Ctrl-D - delete the current note
-            Tab / Shift-Tab - focus next / previous window
-
-            All dangerous operations shows a confirmation dialog.
-            Notes are being saved in the interval of {SAVING_INTERVAL} seconds.
-    """
+    help = '\n'.join([
+        "Key combinations:",
+        "    F1 - show this text",
+        "    F2 - rename the title of current note",
+        "    Ctrl-C - exit the application",
+        "    Ctrl-N - create a new note",
+        "    Ctrl-T - show time of a note's creation",
+        "    Ctrl-D - delete the current note",
+        "    Tab / Shift-Tab - focus next / previous window",
+        "",
+        "All dangerous operations shows a confirmation dialog.",
+        f"Notes are being saved in the interval of {SAVING_INTERVAL} seconds."
+    ])
     return show_message("Help", help)
 
 
@@ -209,7 +209,7 @@ def _(event: KeyPressEvent):
         if not new_title or (new_title and new_title.strip() == ''):
             asyncio.ensure_future(state.show_notification('[ No text was entered ]', 1.5))
             return None
-        
+
         new_title = new_title.strip()
 
         # If no custom flag, then update the title directly in DB
@@ -328,7 +328,11 @@ def get_notification_text():
 
 
 def get_statusbar_text():
-    return HTML(" [F1] Help ")
+    @if_mousedown
+    def open(mouse_event):
+        show_help(mouse_event)
+
+    return [("", " [F1] Help ", open)]
 
 
 def get_statusbar_right_text():
@@ -474,7 +478,7 @@ body = HSplit([
         filter=Condition(lambda: state.current_note)
     ),
     ConditionalContainer(
-        no_notes_text, 
+        no_notes_text,
         filter=Condition(lambda: not state.current_note)
     ),
     Window(
