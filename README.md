@@ -1,4 +1,4 @@
-<p align="center"><img width="95%" src="./notty.png" alt="terminal view" /></p>
+<p align="center"><img width=512 src="./notty.png" alt="terminal view" /></p>
 <h1 align="center">notty</h1>
 <h6 align="center">📝⚡ Fast terminal-based notes application</h6>
 
