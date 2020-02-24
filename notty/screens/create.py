@@ -23,7 +23,6 @@ NOW = date_now()
 
 class ApplicationState:
     title = NOW
-    text = ''
     note_id = None
     is_float_displaying = False
     is_saved = False
@@ -92,7 +91,7 @@ async def show_dialog_as_float(dialog):
 
 
 def get_topbar_text():
-    return [("class:bold", str(state.is_saved))]
+    return [("class:bold", "New note")]
 
 
 def get_statusbar_upper_text():
@@ -116,7 +115,7 @@ top_bar = Window(
     style="class:topbar"
 )
 text_window = TextArea(
-    text=state.text,
+    text="",
     multiline=True,
     wrap_lines=True,
     focusable=True,
@@ -164,33 +163,13 @@ def _(event):
         current_text = text_window.text
 
         def save_handler(s):
-            if current_text == '':
-                dialog = MessageDialog(
-                    title="Exit",
-                    text="Note with empty content will not be saved",
-                )
-                res = await show_dialog_as_float(dialog)
+            if state.note_id:
+                db.update_text(state.note_id, current_text)
             else:
                 db.insert((state.title, current_text, NOW))
             s.future.set_result(True)
 
-        if state.is_saved:
-            if current_text == "":
-                dialog = ConfirmationDialog(
-                    title="Exit",
-                    text="Note with empty content will be deleted",
-                    yes_text="Delete",
-                    no_text="Cancel"
-                )
-                res = await show_dialog_as_float(dialog)
-
-                if res:
-                    db.delete(state.note_id)
-                else:
-                    return False
-            else:
-                db.update_text(state.note_id, text_window.text)
-        else:
+        if not state.is_saved:
             dialog = ConfirmationDialog(
                 title="Exit",
                 text="Exit without saving?",
@@ -201,6 +180,13 @@ def _(event):
             res = await show_dialog_as_float(dialog)
 
             # If canceled then do not exit the app
+            #
+            # We should close the app when clicked "Save" button
+            # but we don't need another handler because there's already
+            # "save_handler()" attached
+            #
+            # On "Exit", we should ignore it because abort() function is
+            # called right after the "if" statement
             if not res:
                 return False
 

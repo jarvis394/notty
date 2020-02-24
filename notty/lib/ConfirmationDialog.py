@@ -24,7 +24,7 @@ class ConfirmationDialog:
         ]
 
         if button:
-            self.buttons.insert(0, Button(text=button[0], handler=lambda: button[1](self)))
+            self.buttons.insert(1, Button(text=button[0], handler=lambda: button[1](self)))
 
         self.dialog = Dialog(
             title=title,

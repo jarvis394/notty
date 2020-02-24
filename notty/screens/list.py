@@ -200,6 +200,7 @@ def show_help(event: KeyPressEvent):
     return show_message("Help", help)
 
 
+@kb.add("c-r", eager=True)
 @kb.add("f2", eager=True)
 def _(event: KeyPressEvent):
     """ Renames the current note """
@@ -279,7 +280,7 @@ def _(event: KeyPressEvent):
     """ Create a new note """
     if state.is_float_displaying:
         return
-    
+
     insert_note_to_cache(create_initial_note())
     update_text_window(0)
     state.selected_option_index = 0
