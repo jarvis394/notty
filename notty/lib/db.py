@@ -32,7 +32,11 @@ class Notes:
     def get(self, id):
         data = self.db.execute(f'SELECT * FROM notes WHERE id = {id};')
         data = data.fetchone()
-        return {'id': data[0], 'title': data[1], 'text': data[2], 'ts': data[3]}
+
+        if not data:
+            return None
+        else:
+            return {'id': data[0], 'title': data[1], 'text': data[2], 'ts': data[3]}
 
     def insert(self, data):
         self.db.execute(
