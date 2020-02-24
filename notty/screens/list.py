@@ -144,7 +144,7 @@ def save_current_note():
 
 def create_initial_note():
     return {
-        'id': 0,
+        'id': None,
         'title': date_now(),
         'text': '',
         'ts': date_now(),
@@ -326,7 +326,11 @@ def get_titlebar_text():
 
 
 def get_current_note_title():
-    return state.current_note.get('title') if state.current_note else ""
+    if not state.current_note:
+        return ""
+
+    id = f"[{state.current_note.get('id')}] " if state.current_note.get("id") else ""
+    return id + state.current_note.get('title')
 
 
 def get_notification_text():
@@ -507,14 +511,16 @@ body = HSplit([
         height=1
     ),
 ])
+titlebar= VSplit([
+    Window(
+        FormattedTextControl(get_titlebar_text),
+        align=WindowAlign.CENTER,
+        style="class:topbar"
+    )
+], height=1, style="class:topbar")
 root_container = FloatContainer(HSplit(
     [
-        Window(
-            height=1,
-            content=FormattedTextControl(get_titlebar_text),
-            align=WindowAlign.CENTER,
-            style="class:topbar"
-        ),
+        titlebar,
         body,
     ]),
     floats=[]
