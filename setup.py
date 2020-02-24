@@ -18,7 +18,7 @@ URL = 'https://github.com/jarvis394/notty'
 EMAIL = 'tarnatovski@gmail.com'
 AUTHOR = 'jarvis394'
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = '0.1.0'
+VERSION = '1.2.0'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
@@ -26,9 +26,7 @@ REQUIRED = [
 ]
 
 # What packages are optional?
-EXTRAS = {
-    # 'fancy feature': ['django'],
-}
+EXTRAS = {}
 
 # The rest you shouldn't have to touch too much :)
 # ------------------------------------------------
@@ -103,13 +101,11 @@ setup(
     author_email=EMAIL,
     python_requires=REQUIRES_PYTHON,
     url=URL,
-    packages=find_packages(exclude=["tests", "*.tests", "*.tests.*", "tests.*"]),
-    # If your package is a single module, use this instead of 'packages':
-    # py_modules=['mypackage'],
-
-    # entry_points={
-    #     'console_scripts': ['mycli=mymodule:cli'],
-    # },
+    #packages=find_packages(exclude=["tests", "*.tests", "*.tests.*", "tests.*"]),
+    py_modules=['notty'],
+    entry_points={
+        'console_scripts': ['notty=notty:app'],
+    },
     install_requires=REQUIRED,
     extras_require=EXTRAS,
     include_package_data=True,

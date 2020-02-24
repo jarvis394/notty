@@ -134,6 +134,13 @@ def save_current_note():
     if state.current_note.get('_INSERT_FLAG'):
         db.insert((state.current_note['title'],
                    text, state.current_note['ts']))
+
+        # Assign a newly created ID to the note
+        id = db.db.lastrowid
+        state.current_note["id"] = id
+        notes[state.selected_option_index]["id"] = id
+
+        # Delete the custom flag
         del state.current_note['_INSERT_FLAG']
     else:
         db.update_text(state.current_note['id'], text)
@@ -218,7 +225,7 @@ def _(event: KeyPressEvent):
 
         # If no custom flag, then update the title directly in DB
         # If the current note is located only in cache (notes List),
-        # then there wouldn't be any document to update (tl;dr; will cause SQLite error)
+        # then there wouldn't be any document to update (tl;dr; will cause an SQLite error)
         if not state.current_note.get('_INSERT_FLAG'):
             db.update_title(state.current_note['id'], new_title)
         notes[state.selected_option_index]['title'] = new_title
