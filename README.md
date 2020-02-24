@@ -1,6 +1,6 @@
-<p align="center"><img src="./notty.png" alt="terminal view" /></p>
-<h3 align="center">notty</h3>
-<h6 align="center">Fast terminal-based notes application</h6>
+<p align="center"><img width="95%" src="./notty.png" alt="terminal view" /></p>
+<h1 align="center">notty</h1>
+<h6 align="center">📝⚡ Fast terminal-based notes application</h6>
 
 ## Installation
 
