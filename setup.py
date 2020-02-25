@@ -22,7 +22,7 @@ VERSION = '1.2.0'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'prompt_toolkit', 'colorama', 'appdirs'
+    'prompt_toolkit', 'colorama', 'appdirs', 'click'
 ]
 
 # What packages are optional?
@@ -101,11 +101,11 @@ setup(
     author_email=EMAIL,
     python_requires=REQUIRES_PYTHON,
     url=URL,
-    #packages=find_packages(exclude=["tests", "*.tests", "*.tests.*", "tests.*"]),
     py_modules=['notty'],
-    entry_points={
-        'console_scripts': ['notty=notty:app'],
-    },
+    # entry_points={
+    #     'console_scripts': ['notty=notty:app'],
+    # },
+    scripts=['dist/app/app'],
     install_requires=REQUIRED,
     extras_require=EXTRAS,
     include_package_data=True,
