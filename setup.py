@@ -18,7 +18,7 @@ URL = 'https://github.com/jarvis394/notty'
 EMAIL = 'tarnatovski@gmail.com'
 AUTHOR = 'jarvis394'
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = '1.2.0'
+VERSION = '1.3.2'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
@@ -26,7 +26,7 @@ REQUIRED = [
 ]
 
 # What packages are optional?
-EXTRAS = {}
+EXTRAS = { 'bin': 'pyinstaller' }
 
 # The rest you shouldn't have to touch too much :)
 # ------------------------------------------------
@@ -102,10 +102,9 @@ setup(
     python_requires=REQUIRES_PYTHON,
     url=URL,
     py_modules=['notty'],
-    # entry_points={
-    #     'console_scripts': ['notty=notty:app'],
-    # },
-    scripts=['dist/app/app'],
+    entry_points={
+        'console_scripts': ['notty=notty.app:main'],
+    },
     install_requires=REQUIRED,
     extras_require=EXTRAS,
     include_package_data=True,

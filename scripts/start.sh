@@ -1,0 +1,1 @@
+python ./notty/app.py "$@"
