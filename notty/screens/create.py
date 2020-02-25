@@ -64,7 +64,7 @@ def abort():
 
         try:
             db.close_conn()
-        except:
+        except Exception as e:
             exception = Exception(f'Exception occurred on exiting: {e}')
             return app.exit(exception=exception)
         return app.exit()
