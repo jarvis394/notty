@@ -1,4 +1,0 @@
-prompt_toolkit
-colorama
-appdirs
-click
