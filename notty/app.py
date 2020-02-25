@@ -12,21 +12,31 @@ NOW = date_now()
 RS = Style.RESET_ALL
 db = Notes()
 
-def clear():
-    return os.system('clear')
+
+def get_ids(ctx, args, incomplete):
+    notes = db.get_all()
+    completions = list(map(lambda k: k["id"], notes))
+    return [k for k in completions if incomplete in k]
+
 
 @click.group(cls=ClickAliasedGroup)
 def cli():
     pass
 
 @cli.command(aliases=['edit', 'e'], help='edits a note in your default editor')
-@click.argument('id')
-def edit(id):
+@click.argument('id', type=click.INT, autocompletion=get_ids)
+@click.option('--editor', '-e')
+def edit(id, editor):
     note = db.get(id)
 
     if not note:
         return click.echo(f"\n\n  Note with ID {Fore.YELLOW}{id}{RS} was not found\n")
-    new_text = click.edit(text=note.get('text'))
+
+    try:
+        new_text = click.edit(text=note.get('text'), editor=editor)
+    except Exception as e:
+        print(f'On trying to edit: {e}')
+        return
     db.update_text(id, new_text)
     click.echo(f"\n\n  Note with ID {Fore.YELLOW}{id}{RS} was successfully saved!\n")
 
