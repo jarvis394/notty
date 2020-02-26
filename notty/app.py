@@ -13,12 +13,6 @@ RS = Style.RESET_ALL
 db = Notes()
 
 
-def get_ids(ctx, args, incomplete):
-    notes = db.get_all()
-    completions = list(map(lambda k: k["id"], notes))
-    return [k for k in completions if incomplete in k]
-
-
 @click.group(cls=ClickAliasedGroup)
 def cli():
     """
@@ -29,13 +23,13 @@ def cli():
     pass
 
 @cli.command(aliases=['edit', 'e'], help='Edits a note in your default editor')
-@click.argument('id', type=click.INT, autocompletion=get_ids)
+@click.argument('id', type=click.INT)
 @click.option('--editor', '-e')
 def edit(id, editor):
     note = db.get(id)
 
     if not note:
-        return click.echo(f"\n\n  Note with ID {Fore.YELLOW}{id}{RS} was not found\n")
+        return click.echo(f"\n  Note with ID {Fore.YELLOW}{id}{RS} was not found\n  Try searching in {Fore.CYAN}notty list{RS}\n")
 
     try:
         new_text = click.edit(text=note.get('text'), editor=editor)
@@ -51,7 +45,7 @@ def create():
 
 @cli.command(aliases=['list', 'l'], help='Lists your notes in a cool fancy window')
 @click.argument('id', type=int, required=False, default=None)
-@click.option('--no-window', '-n', default=False, is_flag=True, help='print your notes as a list without showing a fancy window')
+@click.option('--no-window', '-n', default=False, is_flag=True, help='Print your notes as a list without showing a fancy window')
 def list(no_window, id):
     if no_window or id:
         def format_note(note):
