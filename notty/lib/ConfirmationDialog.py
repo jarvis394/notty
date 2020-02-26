@@ -1,10 +1,6 @@
 from asyncio import Future
 from prompt_toolkit.layout.dimension import D
-from prompt_toolkit.widgets import (
-    Button,
-    Dialog,
-    Label
-)
+from prompt_toolkit.widgets import Button, Dialog, Label
 from prompt_toolkit.layout.containers import HSplit
 
 
@@ -20,18 +16,20 @@ class ConfirmationDialog:
 
         self.buttons = [
             Button(text=yes_text, handler=yes_handler),
-            Button(text=no_text, handler=no_handler)
+            Button(text=no_text, handler=no_handler),
         ]
 
         if button:
-            self.buttons.insert(1, Button(text=button[0], handler=lambda: button[1](self)))
+            self.buttons.insert(
+                1, Button(text=button[0], handler=lambda: button[1](self))
+            )
 
         self.dialog = Dialog(
             title=title,
             body=HSplit([Label(text=text)]),
             buttons=self.buttons,
             width=D(preferred=50),
-            modal=True
+            modal=True,
         )
 
     def __pt_container__(self):

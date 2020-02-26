@@ -6,7 +6,7 @@
 from colorama import Style
 import click
 
-_click7 = click.__version__[0] >= '7'
+_click7 = click.__version__[0] >= "7"
 
 
 class ClickAliasedGroup(click.Group):
@@ -16,7 +16,7 @@ class ClickAliasedGroup(click.Group):
         self._aliases = {}
 
     def command(self, *args, **kwargs):
-        aliases = kwargs.pop('aliases', [])
+        aliases = kwargs.pop("aliases", [])
         decorator = super(ClickAliasedGroup, self).command(*args, **kwargs)
         if not aliases:
             return decorator
@@ -32,7 +32,7 @@ class ClickAliasedGroup(click.Group):
         return _decorator
 
     def group(self, *args, **kwargs):
-        aliases = kwargs.pop('aliases', [])
+        aliases = kwargs.pop("aliases", [])
         decorator = super(ClickAliasedGroup, self).group(*args, **kwargs)
         if not aliases:
             return decorator
@@ -70,17 +70,17 @@ class ClickAliasedGroup(click.Group):
             cmd = self.get_command(ctx, sub_command)
             if cmd is None:
                 continue
-            if hasattr(cmd, 'hidden') and cmd.hidden:
+            if hasattr(cmd, "hidden") and cmd.hidden:
                 continue
             if sub_command in self._commands:
-                aliases = ', '.join(sorted(self._commands[sub_command]))
-                sub_command = f'{sub_command} {Style.DIM}({aliases}){Style.RESET_ALL}'
+                aliases = ", ".join(sorted(self._commands[sub_command]))
+                sub_command = f"{sub_command} {Style.DIM}({aliases}){Style.RESET_ALL}"
             if _click7:
                 cmd_help = cmd.get_short_help_str(limit)
             else:
-                cmd_help = cmd.short_help or ''
+                cmd_help = cmd.short_help or ""
             rows.append((sub_command, cmd_help))
 
         if rows:
-            with formatter.section('Commands'):
+            with formatter.section("Commands"):
                 formatter.write_dl(rows)

@@ -1,0 +1,4 @@
+indent-string='    '
+indent-after-paren=4
+expected-line-ending-format=
+single-line-if-stmt=yes

@@ -6,7 +6,14 @@ from prompt_toolkit.shortcuts import prompt
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.application.current import get_app
-from prompt_toolkit.layout.containers import HSplit, VSplit, Window, WindowAlign, Float, FloatContainer
+from prompt_toolkit.layout.containers import (
+    HSplit,
+    VSplit,
+    Window,
+    WindowAlign,
+    Float,
+    FloatContainer,
+)
 from notty.lib.db import Notes
 from notty.utils.date_now import date_now
 from colorama import Fore, Style
@@ -36,7 +43,8 @@ class ApplicationState:
         :param timeout: Timeout
         """
         self.notification_text = HTML(
-            f"<style bg=\"white\" color=\"black\">[ {message} ]</style>")
+            f'<style bg="white" color="black">[ {message} ]</style>'
+        )
         await asyncio.sleep(timeout)
         self.notification_text = None
 
@@ -50,7 +58,7 @@ style = PromptStyle.from_dict(
         "status": "reverse",
         "topbar": "bg:#fff bg:blue",
         "line": "#fff",
-        "notification": "#fff"
+        "notification": "#fff",
     }
 )
 
@@ -59,13 +67,13 @@ def abort():
     app = get_app()
     if get_app().is_running:
         print()
-        print(f'  {Fore.YELLOW}Aborting.{RS}')
+        print(f"  {Fore.YELLOW}Aborting.{RS}")
         print()
 
         try:
             db.close_conn()
         except Exception as e:
-            exception = Exception(f'Exception occurred on exiting: {e}')
+            exception = Exception(f"Exception occurred on exiting: {e}")
             return app.exit(exception=exception)
         return app.exit()
 
@@ -112,7 +120,7 @@ top_bar = Window(
     height=1,
     content=FormattedTextControl(get_topbar_text),
     align=WindowAlign.CENTER,
-    style="class:topbar"
+    style="class:topbar",
 )
 text_window = TextArea(
     text="",
@@ -120,37 +128,36 @@ text_window = TextArea(
     wrap_lines=True,
     focusable=True,
     scrollbar=True,
-    line_numbers=True
+    line_numbers=True,
 )
 title_bar = Window(
     FormattedTextControl(get_statusbar_upper_text),
     align=WindowAlign.CENTER,
     style="class:notification",
-    height=1
+    height=1,
 )
-status_bar = VSplit([
-    Window(
-        FormattedTextControl(HTML(
-            'Press <style bg="blue"><b>F2</b></style> or <style bg="blue"><b>Ctrl-R</b></style> to set a title')),
-        style="class:status"
-    ),
-    Window(
-        FormattedTextControl(get_statusbar_right_text),
-        style="class:status.right, bold",
-        width=9,
-        align=WindowAlign.RIGHT,
-    )],
-    height=1
+status_bar = VSplit(
+    [
+        Window(
+            FormattedTextControl(
+                HTML(
+                    'Press <style bg="blue"><b>F2</b></style> or <style bg="blue"><b>Ctrl-R</b></style> to set a title'
+                )
+            ),
+            style="class:status",
+        ),
+        Window(
+            FormattedTextControl(get_statusbar_right_text),
+            style="class:status.right, bold",
+            width=9,
+            align=WindowAlign.RIGHT,
+        ),
+    ],
+    height=1,
 )
 
 root_container = FloatContainer(
-    HSplit([
-        top_bar,
-        text_window,
-        title_bar,
-        status_bar
-    ]),
-    floats=[]
+    HSplit([top_bar, text_window, title_bar, status_bar]), floats=[]
 )
 layout = Layout(container=root_container, focused_element=text_window)
 
@@ -159,6 +166,7 @@ layout = Layout(container=root_container, focused_element=text_window)
 @kb.add("c-c", eager=True)
 def _(event):
     " Quit application "
+
     async def coroutine():
         current_text = text_window.text
 
@@ -175,7 +183,7 @@ def _(event):
                 text="Exit without saving?",
                 yes_text="Yes",
                 no_text="Cancel",
-                button=('Save', save_handler)
+                button=("Save", save_handler),
             )
             res = await show_dialog_as_float(dialog)
 
@@ -215,12 +223,13 @@ def _(event):
 @kb.add("f2", eager=True)
 def _(event):
     " Rename the note "
+
     async def coroutine():
         dialog = TextInputDialog(title="Rename")
         new_title = await show_dialog_as_float(dialog)
 
         # Return if no title was entered
-        if not new_title or (new_title and new_title.strip() == ''):
+        if not new_title or (new_title and new_title.strip() == ""):
             return None
 
         state.title = new_title.strip()
@@ -246,7 +255,7 @@ application = Application(
     full_screen=True,
     erase_when_done=False,
     style=style,
-    refresh_interval=0.5
+    refresh_interval=0.5,
 )
 
 

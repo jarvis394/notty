@@ -20,6 +20,7 @@ appdirs = "^1.4.3"
 
 [tool.poetry.dev-dependencies]
 autohooks = "^2.0.0"
+autohooks-plugin-pylint = "^1.2.0"
 
 [tool.poetry.scripts]
 notty = "notty.app:main"
@@ -28,26 +29,8 @@ notty = "notty.app:main"
 mode = "poetry"
 pre-commit = ["autohooks.plugins.pylint"]
 
-[tool.black]
-py36 = true
-include = '\.pyi?$'
-exclude = '''
-    /(
-        \.git
-      | \.hg
-      | \.mypy_cache
-      | \.tox
-      | \.venv
-      | _build
-      | buck-out
-      | build
-      | dist
-
-      # The following are specific to Black, you probably don't want those.
-      | blib2to3
-      | tests/data
-    )/
-'''
+[tool.autohooks.plugins.pylint]
+include = ['*.py']
 
 [build-system]
 requires = ["poetry>=0.12"]

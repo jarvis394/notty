@@ -22,40 +22,56 @@ def cli():
     """
     pass
 
-@cli.command(aliases=['edit', 'e'], help='Edits a note in your default editor')
-@click.argument('id', type=click.INT)
-@click.option('--editor', '-e')
+
+@cli.command(aliases=["edit", "e"], help="Edits a note in your default editor")
+@click.argument("id", type=click.INT)
+@click.option("--editor", "-e")
 def edit(id, editor):
     note = db.get(id)
 
     if not note:
-        return click.echo(f"\n  Note with ID {Fore.YELLOW}{id}{RS} was not found\n  Try searching in {Fore.CYAN}notty list{RS}\n")
+        return click.echo(
+            f"\n  Note with ID {Fore.YELLOW}{id}{RS} was not found\n  Try searching in {Fore.CYAN}notty list{RS}\n"
+        )
 
     try:
-        new_text = click.edit(text=note.get('text'), editor=editor)
+        new_text = click.edit(text=note.get("text"), editor=editor)
     except Exception as e:
-        print(f'On trying to edit: {e}')
+        print(f"On trying to edit: {e}")
         return
     db.update_text(id, new_text)
     click.echo(f"\n\n  Note with ID {Fore.YELLOW}{id}{RS} was successfully saved!\n")
 
-@cli.command(aliases=['create', 'c'], help='Creates a new note')
+
+@cli.command(aliases=["create", "c"], help="Creates a new note")
 def create():
     return screens.create.execute()
 
-@cli.command(aliases=['list', 'l'], help='Lists your notes in a cool fancy window')
-@click.argument('id', type=int, required=False, default=None)
-@click.option('--no-window', '-n', default=False, is_flag=True, help='Print your notes as a list without showing a fancy window')
+
+@cli.command(aliases=["list", "l"], help="Lists your notes in a cool fancy window")
+@click.argument("id", type=int, required=False, default=None)
+@click.option(
+    "--no-window",
+    "-n",
+    default=False,
+    is_flag=True,
+    help="Print your notes as a list without showing a fancy window",
+)
 def list(no_window, id):
     if no_window or id:
+
         def format_note(note):
             id, title, text, ts = note["id"], note["title"], note["text"], note["ts"]
-            formatted_text = '\n    '.join(text.strip().split('\n'))[:96] + ('...' if len(text) > 96 else '')
-            return '\n'.join([
-                f"{Fore.YELLOW}[{id}]{RS} {Style.BRIGHT}{Fore.CYAN}{title}{RS}",
-                f"{Style.DIM}Date: {ts}{RS}",
-                f"\n    {formatted_text}\n\n"
-            ])
+            formatted_text = "\n    ".join(text.strip().split("\n"))[:96] + (
+                "..." if len(text) > 96 else ""
+            )
+            return "\n".join(
+                [
+                    f"{Fore.YELLOW}[{id}]{RS} {Style.BRIGHT}{Fore.CYAN}{title}{RS}",
+                    f"{Style.DIM}Date: {ts}{RS}",
+                    f"\n    {formatted_text}\n\n",
+                ]
+            )
 
         notes = reversed(db.get_all())
         notes = map(format_note, notes)
@@ -63,11 +79,14 @@ def list(no_window, id):
     else:
         return screens.list.execute()
 
+
 # Initialize color support
 colorama.init()
 
+
 def main():
     cli()
+
 
 if __name__ == "__main__":
     main()

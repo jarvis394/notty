@@ -1,9 +1,22 @@
 #!/usr/bin/env python
 from prompt_toolkit.application import Application
 from prompt_toolkit.buffer import Buffer
-from prompt_toolkit.key_binding import KeyBindings, merge_key_bindings, ConditionalKeyBindings
+from prompt_toolkit.key_binding import (
+    KeyBindings,
+    merge_key_bindings,
+    ConditionalKeyBindings,
+)
 from prompt_toolkit.key_binding.bindings.focus import focus_next, focus_previous
-from prompt_toolkit.layout.containers import HSplit, VSplit, Window, WindowAlign, VerticalAlign, ScrollOffsets, Float, FloatContainer
+from prompt_toolkit.layout.containers import (
+    HSplit,
+    VSplit,
+    Window,
+    WindowAlign,
+    VerticalAlign,
+    ScrollOffsets,
+    Float,
+    FloatContainer,
+)
 from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.layout import ConditionalContainer
 from prompt_toolkit.key_binding.key_processor import KeyPressEvent
@@ -44,7 +57,7 @@ class ApplicationState:
     current_note = None
 
     """ Current note text """
-    current_text = ''
+    current_text = ""
 
     """ Current focused window """
     focused_window = None
@@ -53,7 +66,7 @@ class ApplicationState:
     Notification text to display
     Used in self.show_notification
     """
-    notification_text = ''
+    notification_text = ""
 
     """
     State which describes if any float is displaying currently
@@ -70,11 +83,9 @@ class ApplicationState:
         :param message: Message to display
         :param timeout: Timeout
         """
-        self.notification_text = HTML(
-            f"<style bg=\"white\">[ {message} ]</style>"
-        )
+        self.notification_text = HTML(f'<style bg="white">[ {message} ]</style>')
         await asyncio.sleep(timeout)
-        self.notification_text = ''
+        self.notification_text = ""
 
 
 # Database class
@@ -109,7 +120,7 @@ style = PromptStyle.from_dict(
         "sidebar.modified": "bg:orange white bold",
         "status": "reverse",
         "topbar": "bg:#fff bg:blue",
-        "notification": "#000"
+        "notification": "#000",
     }
 )
 
@@ -120,59 +131,63 @@ text_window = TextArea(
     line_numbers=True,
     multiline=True,
     width=Dimension(min=24),
-    focus_on_click=True
+    focus_on_click=True,
 )
 
 
 def save_current_note():
     """ Save the current note """
-    text = text_window.document.text or ''
+    text = text_window.document.text or ""
 
     if not state.current_note:
         return
 
-    if state.current_note.get('_INSERT_FLAG'):
-        note_id = db.insert((state.current_note['title'],
-                   text, state.current_note['ts']))
+    if state.current_note.get("_INSERT_FLAG"):
+        note_id = db.insert(
+            (state.current_note["title"], text, state.current_note["ts"])
+        )
 
         # Assign a newly created ID to the note
         state.current_note["id"] = note_id
         notes[state.selected_option_index]["id"] = note_id
 
         # Delete the custom flag
-        del state.current_note['_INSERT_FLAG']
+        del state.current_note["_INSERT_FLAG"]
     else:
-        db.update_text(state.current_note['id'], text)
+        db.update_text(state.current_note["id"], text)
 
-    notes[state.selected_option_index]['text'] = text
+    notes[state.selected_option_index]["text"] = text
     pass
 
 
 def create_initial_note():
     return {
-        'id': None,
-        'title': date_now(),
-        'text': '',
-        'ts': date_now(),
-        '_INSERT_FLAG': True
+        "id": None,
+        "title": date_now(),
+        "text": "",
+        "ts": date_now(),
+        "_INSERT_FLAG": True,
     }
 
 
 def show_help():
-    help = '\n'.join([
-        "Key combinations:",
-        "    F1 - show this text",
-        "    F2 - rename the title of current note",
-        "    Ctrl-C - exit the application",
-        "    Ctrl-N - create a new note",
-        "    Ctrl-T - show time of a note's creation",
-        "    Ctrl-D - delete the current note",
-        "    Tab / Shift-Tab - focus next / previous window",
-        "",
-        "All dangerous operations shows a confirmation dialog.",
-        f"Notes are being saved in the interval of {SAVING_INTERVAL} seconds."
-    ])
+    help = "\n".join(
+        [
+            "Key combinations:",
+            "    F1 - show this text",
+            "    F2 - rename the title of current note",
+            "    Ctrl-C - exit the application",
+            "    Ctrl-N - create a new note",
+            "    Ctrl-T - show time of a note's creation",
+            "    Ctrl-D - delete the current note",
+            "    Tab / Shift-Tab - focus next / previous window",
+            "",
+            "All dangerous operations shows a confirmation dialog.",
+            f"Notes are being saved in the interval of {SAVING_INTERVAL} seconds.",
+        ]
+    )
     return show_message("Help", help)
+
 
 def rename_current_note():
     async def coroutine():
@@ -180,9 +195,12 @@ def rename_current_note():
         new_title = await show_dialog_as_float(dialog)
 
         # Return if no title was entered
-        if not new_title or (new_title and new_title.strip() == ''):
+        if not new_title or (new_title and new_title.strip() == ""):
             asyncio.ensure_future(
-                state.show_notification("No text was entered" if new_title == '' else "Rename canceled", 1.5))
+                state.show_notification(
+                    "No text was entered" if new_title == "" else "Rename canceled", 1.5
+                )
+            )
             return None
 
         new_title = new_title.strip()
@@ -190,9 +208,9 @@ def rename_current_note():
         # If no custom flag, then update the title directly in DB
         # If the current note is located only in cache (notes List),
         # then there wouldn't be any document to update (tl;dr; will cause an SQLite error)
-        if not state.current_note.get('_INSERT_FLAG'):
-            db.update_title(state.current_note['id'], new_title)
-        notes[state.selected_option_index]['title'] = new_title
+        if not state.current_note.get("_INSERT_FLAG"):
+            db.update_title(state.current_note["id"], new_title)
+        notes[state.selected_option_index]["title"] = new_title
 
     if not state.current_note:
         return
@@ -200,7 +218,9 @@ def rename_current_note():
     # Run coroutine
     return asyncio.ensure_future(coroutine())
 
+
 #### Key bindings ####
+
 
 @kb.add("c-c", eager=True)
 @kb.add("c-x", eager=True)
@@ -217,8 +237,7 @@ def _(event: KeyPressEvent):
         # Try to close SQLite DB connection
         db.close_conn()
     except Exception as e:
-        exception = Exception(
-            f'Exception occurred on exiting: {e}')
+        exception = Exception(f"Exception occurred on exiting: {e}")
         return event.app.exit(exception=exception)
     else:
         return event.app.exit()
@@ -240,9 +259,14 @@ def _(event: KeyPressEvent):
 @kb.add("c-d", eager=True)
 def _(event: KeyPressEvent):
     """ Deletes the current note """
+
     async def coroutine():
         dialog = ConfirmationDialog(
-            title="Delete", yes_text="Yes", no_text="Cancel", text="Do you want to delete the note?")
+            title="Delete",
+            yes_text="Yes",
+            no_text="Cancel",
+            text="Do you want to delete the note?",
+        )
         result = await show_dialog_as_float(dialog)
 
         # Return if canceled
@@ -252,7 +276,7 @@ def _(event: KeyPressEvent):
         # If the current note doesn't have a custom flag then it is in DB
         # so we need to manually call .delete() method. In any way, #
         # we should delete the note in cache
-        if not state.current_note.get('_INSERT_FLAG'):
+        if not state.current_note.get("_INSERT_FLAG"):
             db.delete(state.current_note.get("id"))
         del notes[state.selected_option_index]
 
@@ -314,7 +338,7 @@ def _(event: KeyPressEvent):
     state.focused_window = event.app.layout.current_window
 
 
-@kb.add('c-s')
+@kb.add("c-s")
 def _(e: KeyPressEvent):
     " Save manually "
     if state.current_note and not state.is_float_displaying:
@@ -333,6 +357,7 @@ def save_job():
 
 # Getters for windows' texts
 
+
 def get_titlebar_text():
     return [("class:bold", "Notes")]
 
@@ -342,7 +367,7 @@ def get_current_note_title():
         return ""
 
     id = f"[{state.current_note.get('id')}] " if state.current_note.get("id") else ""
-    return id + state.current_note.get('title')
+    return id + state.current_note.get("title")
 
 
 def get_notification_text():
@@ -358,10 +383,14 @@ def get_statusbar_text():
 
 
 def get_statusbar_right_text():
-    return " {}:{}  ".format(
-        text_window.document.cursor_position_row + 1,
-        text_window.document.cursor_position_col + 1,
-    ) if state.current_note else ""
+    return (
+        " {}:{}  ".format(
+            text_window.document.cursor_position_row + 1,
+            text_window.document.cursor_position_col + 1,
+        )
+        if state.current_note
+        else ""
+    )
 
 
 # Needed to be called `switch_note()`
@@ -369,7 +398,7 @@ def update_text_window(i: int):
     """ Updates a text in text input window """
     try:
         state.current_note = notes[i]
-        text_window.text = notes[i].get('text')
+        text_window.text = notes[i].get("text")
     except:
         pass
 
@@ -445,11 +474,18 @@ def create_sidebar():
                     state.selected_option_index += 1
                 update_text_window(state.selected_option_index)
 
-            sel = ",selected" if selected and state.focused_window == sidebar else ",seldim" if selected else ""
+            sel = (
+                ",selected"
+                if selected and state.focused_window == sidebar
+                else ",seldim"
+                if selected
+                else ""
+            )
             spaces = MAX_TITLE_LENGTH - len(label)
 
-            tokens.append(("class:sidebar.label" + sel,
-                           f"{label}{' ' * spaces}", select_item))
+            tokens.append(
+                ("class:sidebar.label" + sel, f"{label}{' ' * spaces}", select_item)
+            )
 
             if selected:
                 tokens.append(("[SetCursorPosition]", ""))
@@ -458,8 +494,13 @@ def create_sidebar():
 
         i = 0
         for note in notes:
-            append(i, note['title'] if len(note['title'])
-                   < 32 else note['title'][0:(MAX_TITLE_LENGTH - 3)] + '...', note.get('is_modified'))
+            append(
+                i,
+                note["title"]
+                if len(note["title"]) < 32
+                else note["title"][0 : (MAX_TITLE_LENGTH - 3)] + "...",
+                note.get("is_modified"),
+            )
             i += 1
 
         return tokens
@@ -477,85 +518,88 @@ def create_sidebar():
 
 sidebar = create_sidebar()
 no_notes_text = Window(
-    FormattedTextControl(HTML(
-        '\n\n\nNo notes!\nCreate a new one by hitting <style color="blue"><b>Ctrl-N</b></style>')),
+    FormattedTextControl(
+        HTML(
+            '\n\n\nNo notes!\nCreate a new one by hitting <style color="blue"><b>Ctrl-N</b></style>'
+        )
+    ),
     align=WindowAlign.CENTER,
 )
 
-main_window = VSplit([
-    sidebar,
-    Window(width=2, char=f'{borders.VERTICAL} ', style="class:line"),
-    text_window
-])
-
-body = HSplit([
-    ConditionalContainer(
-        main_window,
-        filter=Condition(lambda: state.current_note)
-    ),
-    ConditionalContainer(
-        no_notes_text,
-        filter=Condition(lambda: not state.current_note)
-    ),
-    Window(
-        content=FormattedTextControl(get_notification_text),
-        height=1,
-        style="class:notification",
-        align=WindowAlign.CENTER
-    ),
-    VSplit([
-        Window(
-            FormattedTextControl(get_statusbar_text),
-            style="class:status",
-            width=11
-        ),
-        Window(
-            FormattedTextControl(get_current_note_title),
-            align=WindowAlign.CENTER,
-            style="class:status"
-        ),
-        Window(
-            FormattedTextControl(get_statusbar_right_text),
-            style="class:status.right, bold",
-            width=9,
-            align=WindowAlign.RIGHT,
-        )],
-        height=1
-    ),
-])
-titlebar= VSplit([
-    Window(
-        FormattedTextControl(get_titlebar_text),
-        align=WindowAlign.CENTER,
-        style="class:topbar"
-    )
-], height=1, style="class:topbar")
-root_container = FloatContainer(HSplit(
+main_window = VSplit(
     [
-        titlebar,
-        body,
-    ]),
-    floats=[]
+        sidebar,
+        Window(width=2, char=f"{borders.VERTICAL} ", style="class:line"),
+        text_window,
+    ]
 )
+
+body = HSplit(
+    [
+        ConditionalContainer(main_window, filter=Condition(lambda: state.current_note)),
+        ConditionalContainer(
+            no_notes_text, filter=Condition(lambda: not state.current_note)
+        ),
+        Window(
+            content=FormattedTextControl(get_notification_text),
+            height=1,
+            style="class:notification",
+            align=WindowAlign.CENTER,
+        ),
+        VSplit(
+            [
+                Window(
+                    FormattedTextControl(get_statusbar_text),
+                    style="class:status",
+                    width=11,
+                ),
+                Window(
+                    FormattedTextControl(get_current_note_title),
+                    align=WindowAlign.CENTER,
+                    style="class:status",
+                ),
+                Window(
+                    FormattedTextControl(get_statusbar_right_text),
+                    style="class:status.right, bold",
+                    width=9,
+                    align=WindowAlign.RIGHT,
+                ),
+            ],
+            height=1,
+        ),
+    ]
+)
+titlebar = VSplit(
+    [
+        Window(
+            FormattedTextControl(get_titlebar_text),
+            align=WindowAlign.CENTER,
+            style="class:topbar",
+        )
+    ],
+    height=1,
+    style="class:topbar",
+)
+root_container = FloatContainer(HSplit([titlebar, body,]), floats=[])
 application = Application(
     layout=Layout(root_container, focused_element=sidebar),
-    key_bindings=merge_key_bindings([
-        kb,
-        ConditionalKeyBindings(
-            key_bindings=focus_bindings,
-            filter=Condition(
-                lambda: not state.is_float_displaying)
-        ),
-        ConditionalKeyBindings(
-            key_bindings=sidebar_bindings,
-            filter=Condition(
-                lambda: state.focused_window == sidebar)
-        )
-    ]),
+    key_bindings=merge_key_bindings(
+        [
+            kb,
+            ConditionalKeyBindings(
+                key_bindings=focus_bindings,
+                filter=Condition(lambda: not state.is_float_displaying),
+            ),
+            ConditionalKeyBindings(
+                key_bindings=sidebar_bindings,
+                filter=Condition(lambda: state.focused_window == sidebar),
+            ),
+        ]
+    ),
     mouse_support=True,
     full_screen=True,
     style=style,
-    refresh_interval=0.5
+    refresh_interval=0.5,
 )
 
 
