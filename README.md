@@ -2,17 +2,54 @@
 <h1 align="center">notty</h1>
 <h6 align="center">📝⚡ Fast terminal-based notes application</h6>
 
-## Installation
+## Setup
 
-Via `pip`:
+Installation via `pip`:
 
 ```bash
 $ pip install notty
 ```
 
-Currently built on Python 3.7
+Updating:
+
+```bash
+$ pip install notty --upgrade
+```
+
+Executing:
+```bash
+$ notty
+Usage: notty [OPTIONS] COMMAND [ARGS]...
+```
+
+**If you're using Anaconda:**
+1. Create new virtual environment
+    ```bash
+    (base) $ conda create -n YOURNAME python=3
+    Collecting package metadata (current_repodata.json): done
+    Solving environment: done
+    ... # hit [y] for the packages' installation
+    ```
+2. Activate newly created environment
+    ```bash
+    (base) $ conda activate YOURNAME
+    (YOURNAME) $
+    ```
+3. Install via `pip`:
+    ```bash
+    (YOURNAME) $ pip install notty --upgrade
+    ```
+4. To return to the `(base)` environment, run `conda deactivate`:
+    ```bash
+    (YOURNAME) $ conda deactivate
+    (base) $ 
+    ```
+
+*Currently built for **Python 3.x***
 
 ## Usage
+
+For more information, run `notty --help`
 
 |Command|Aliases|Description|
 |-|-|-|
