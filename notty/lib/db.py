@@ -42,7 +42,7 @@ class Notes:
         self.db.execute(
             f'INSERT INTO notes (title, text, ts) VALUES (?, ?, ?);', data)
         self.connection.commit()
-        return self
+        return self.db.lastrowid
 
     def update_text(self, id, text):
         self.db.execute(f'UPDATE notes SET text = "{text}" WHERE id = {id};')

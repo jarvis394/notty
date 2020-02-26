@@ -132,13 +132,12 @@ def save_current_note():
         return
 
     if state.current_note.get('_INSERT_FLAG'):
-        db.insert((state.current_note['title'],
+        note_id = db.insert((state.current_note['title'],
                    text, state.current_note['ts']))
 
         # Assign a newly created ID to the note
-        id = db.db.lastrowid
-        state.current_note["id"] = id
-        notes[state.selected_option_index]["id"] = id
+        state.current_note["id"] = note_id
+        notes[state.selected_option_index]["id"] = note_id
 
         # Delete the custom flag
         del state.current_note['_INSERT_FLAG']
@@ -159,10 +158,47 @@ def create_initial_note():
     }
 
 
-def insert_note_to_cache(note):
-    notes.insert(0, note)
-    pass
+def show_help():
+    help = '\n'.join([
+        "Key combinations:",
+        "    F1 - show this text",
+        "    F2 - rename the title of current note",
+        "    Ctrl-C - exit the application",
+        "    Ctrl-N - create a new note",
+        "    Ctrl-T - show time of a note's creation",
+        "    Ctrl-D - delete the current note",
+        "    Tab / Shift-Tab - focus next / previous window",
+        "",
+        "All dangerous operations shows a confirmation dialog.",
+        f"Notes are being saved in the interval of {SAVING_INTERVAL} seconds."
+    ])
+    return show_message("Help", help)
 
+def rename_current_note():
+    async def coroutine():
+        dialog = TextInputDialog(title="Rename")
+        new_title = await show_dialog_as_float(dialog)
+
+        # Return if no title was entered
+        if not new_title or (new_title and new_title.strip() == ''):
+            asyncio.ensure_future(
+                state.show_notification("No text was entered" if new_title == '' else "Rename canceled", 1.5))
+            return None
+
+        new_title = new_title.strip()
+
+        # If no custom flag, then update the title directly in DB
+        # If the current note is located only in cache (notes List),
+        # then there wouldn't be any document to update (tl;dr; will cause an SQLite error)
+        if not state.current_note.get('_INSERT_FLAG'):
+            db.update_title(state.current_note['id'], new_title)
+        notes[state.selected_option_index]['title'] = new_title
+
+    if not state.current_note:
+        return
+
+    # Run coroutine
+    return asyncio.ensure_future(coroutine())
 
 #### Key bindings ####
 
@@ -189,52 +225,16 @@ def _(event: KeyPressEvent):
 
 
 @kb.add("f1", eager=True)
-def show_help(event: KeyPressEvent):
+def _(event: KeyPressEvent):
     """ Show help float to the user """
-    help = '\n'.join([
-        "Key combinations:",
-        "    F1 - show this text",
-        "    F2 - rename the title of current note",
-        "    Ctrl-C - exit the application",
-        "    Ctrl-N - create a new note",
-        "    Ctrl-T - show time of a note's creation",
-        "    Ctrl-D - delete the current note",
-        "    Tab / Shift-Tab - focus next / previous window",
-        "",
-        "All dangerous operations shows a confirmation dialog.",
-        f"Notes are being saved in the interval of {SAVING_INTERVAL} seconds."
-    ])
-    return show_message("Help", help)
+    return show_help()
 
 
 @kb.add("c-r", eager=True)
 @kb.add("f2", eager=True)
 def _(event: KeyPressEvent):
     """ Renames the current note """
-    async def coroutine():
-        dialog = TextInputDialog(title="Rename")
-        new_title = await show_dialog_as_float(dialog)
-
-        # Return if no title was entered
-        if not new_title or (new_title and new_title.strip() == ''):
-            asyncio.ensure_future(
-                state.show_notification("No text was entered" if new_title == '' else "Rename canceled", 1.5))
-            return None
-
-        new_title = new_title.strip()
-
-        # If no custom flag, then update the title directly in DB
-        # If the current note is located only in cache (notes List),
-        # then there wouldn't be any document to update (tl;dr; will cause an SQLite error)
-        if not state.current_note.get('_INSERT_FLAG'):
-            db.update_title(state.current_note['id'], new_title)
-        notes[state.selected_option_index]['title'] = new_title
-
-    if not state.current_note:
-        return
-
-    # Run coroutine
-    return asyncio.ensure_future(coroutine())
+    rename_current_note()
 
 
 @kb.add("c-d", eager=True)
@@ -288,7 +288,12 @@ def _(event: KeyPressEvent):
     if state.is_float_displaying:
         return
 
-    insert_note_to_cache(create_initial_note())
+    initial_note = create_initial_note()
+    title, text, ts = initial_note["title"], initial_note["text"], initial_note["ts"]
+    note_id = db.insert((title, text, ts))
+    note = dict(id=note_id, title=title, text=text, ts=ts)
+    notes.insert(0, note)
+
     update_text_window(0)
     state.selected_option_index = 0
     state.focused_window = text_window
@@ -346,8 +351,8 @@ def get_notification_text():
 
 def get_statusbar_text():
     @if_mousedown
-    def open(mouse_event):
-        show_help(mouse_event)
+    def open(e):
+        show_help()
 
     return [("", " [F1] Help ", open)]
 
